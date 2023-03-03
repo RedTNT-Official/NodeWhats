@@ -1,0 +1,23 @@
+{
+  "ts-node": {
+    "skipIgnore": true
+  },
+  "compilerOptions": {
+    // "skipLibCheck": true,
+    "target": "es2017",
+    "lib": [
+      "es2017"
+    ],
+    "esModuleInterop": true,
+    "module": "CommonJS",
+    "moduleResolution": "node16",
+    "alwaysStrict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noImplicitThis": true,
+    "resolveJsonModule": true,
+    "inlineSourceMap": true,
+    "importHelpers": true,
+    "experimentalDecorators": true
+  }
+}

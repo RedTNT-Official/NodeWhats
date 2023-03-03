@@ -1,0 +1,32 @@
+{
+  "name": "@redtnt/whatsapp-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "ts-node src/index",
+    "newplugin": "ts-node src/pluginManager/newPlugin"
+  },
+
+  "keywords": [],
+  "author": "RedTNT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RedTNT-Official/MultiBotsApp"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "colors": "1.4.0",
+    "inquirer": "9.1.4",
+    "qrcode-terminal": "0.12.0",
+    "ts-node": "^10.9.1",
+    "tslib": "2.5.0",
+    "whatsapp-web.js": "1.19.4",
+    "yaml": "2.2.1"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.3",
+    "@types/node": "^18.14.0",
+    "@types/qrcode-terminal": "^0.12.0"
+  }
+}
