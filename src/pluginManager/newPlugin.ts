@@ -1,12 +1,13 @@
 import { mkdir, writeFile } from "fs/promises";
 import { existsSync } from "fs";
+import { exec } from "child_process";
 import { join } from "path";
 import "colors";
 
 const mainPath = join(process.cwd(), "plugins");
 
 async function main(name: string) {
-    if (name.trim().length === 0) return console.error("You must enter a name for the plugin");
+    if (name.trim().length === 0) return console.error("You must enter a name for the plugin".red);
     const path = join(mainPath, name);
     if (existsSync(path)) return console.log("The directory already exists".red);
     const packageJson = {
@@ -22,7 +23,8 @@ async function main(name: string) {
             build: "tsc",
         },
         dependencies: {
-            "whatsapp-web.js": "1.19.4"
+            "whatsapp-web.js": "1.19.4",
+            "bot": "file:../../src"
         },
         devDependencies: {
           "@types/node": "^18.14.0"
@@ -31,11 +33,17 @@ async function main(name: string) {
     await mkdir(path);
     await writeFile(join(path, "package.json"), JSON.stringify(packageJson, null, 2));
     await writeFile(join(path, "index.ts"),
-`import { Client } from "whatsapp-web.js";
+`import { client } from "bot";
 
-export default function(client: Client) {
-    console.log("[${name}-plugin] Allocated".blue);
-}`);
+console.log("[${name}-plugin] Allocated".blue);
+
+client.on("message_create", (msg) => {
+    if (msg.fromMe) return console.log("Message sent!".green);
+
+    console.log(\`Message recieved from \${msg.author || msg.from}\`.yellow);
+});`);
+
+    exec(`cd plugins/${name} && npm install`);
 }
 
 main(process.argv[2]);

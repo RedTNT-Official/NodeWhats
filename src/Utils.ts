@@ -1,10 +1,14 @@
-import { existsSync, readdirSync, readFileSync, statSync, symlinkSync, writeFileSync } from "fs";
-import { client } from "./index";
+import { existsSync, readdirSync, readFileSync, statSync } from "fs";
+import { client, Command, GoBack, logo, MainMenu } from "./api/index";
+import { Contact, GroupChat } from "whatsapp-web.js";
+import * as inquirer from "inquirer";
 import { exec } from "child_process";
 import { join } from "path";
 
 const pluginsPath = join(process.cwd(), "plugins");
 const mainJsonPath = join(process.cwd(), "package.json");
+
+export const CommandRegistry = new Map<string, Command>();
 
 class Plugin {
     name: string;
@@ -88,7 +92,7 @@ export class LocalPlugin extends Plugin {
 
     load() {
         try {
-            require(`../plugins/${this.dirname}`).default?.(client);
+            require(`../plugins/${this.dirname}`);
         } catch (e) {
             console.log(e);
         }
@@ -123,8 +127,6 @@ function mainPackJson(): PackageJson {
 }
 
 export async function loadPlugins() {
-    //installPlugins();
-
     const npm = NpmPlugin.getInstalled();
 
     if (npm.length > 0) {
@@ -135,7 +137,7 @@ export async function loadPlugins() {
         npm.forEach((plugin) => {
             console.log(`Loading ${plugin.name}`.green);
             try {
-                require(plugin.fullname).default(client);
+                require(plugin.fullname);
             } catch (e) {
                 throw e
             }
@@ -164,75 +166,36 @@ export async function loadListeners() {
 
     for (const listener of listeners) {
         try {
+            delete require.cache[require.resolve(`./listeners/${listener}`)];
             require(`./listeners/${listener}`);
-            //console.log(`Loading ${plugin.name} v${plugin.version}`.green);
         } catch (e) {
             console.error(e)
         }
     }
 }
 
-// function installPlugins() {
-//     const plugins = LocalPlugin.all();
-
-//     for (const plugin of plugins) {
-//         if (plugin.installed) continue;
-
-//         if (!plugin.packageJson.whatsappBotPlugin) {
-//             console.log(`${plugin.dirname} is not a plugin`.red);
-//             continue;
-//         }
-
-//         if (plugin.fullname.split("/")[0] !== "@redtnt") {
-//             console.error(`Plugins must start with "@redtnt"`.red);
-//             continue;
-//         }
-
-//         plugin.install();
-//         console.log(`${plugin.name} plugin installed`.green);
-//     }
-// }
-
 export async function reloadPlugins() {
     client.removeAllListeners();
+    MainMenu.resetChoices();
+    GoBack.resetChoices();
     LocalPlugin.all().forEach(p => p.unload());
+    CommandRegistry.clear();
+    loadListeners();
+    loadCommands();
     await loadPlugins();
 }
 
-export function logo(extra?: string) {
-    console.clear();
-    console.log([
-        "___  ___      _ _   _______       _         ___              ",
-        "|  \\/  |     | | | (_) ___ \\     | |       / _ \\             ",
-        "| .  . |_   _| | |_ _| |_/ / ___ | |_ ___ / /_\\ \\_ __  _ __  ",
-        "| |\\/| | | | | | __| | ___ \\/ _ \\| __/ __||  _  | '_ \\| '_ \\ ",
-        "| |  | | |_| | | |_| | |_/ / (_) | |_\\__ \\| | | | |_) | |_) |",
-        "\\_|  |_/\\__,_|_|\\__|_\\____/ \\___/ \\__|___/\\_| |_/ .__/| .__/ ",
-        "                                                | |   | |    ",
-        "                                                |_|   |_|    "
-    ].join("\n").red);
+function loadCommands() {
+    const commands = readdirSync(join(__dirname, "commands")).filter(f => f.endsWith(".ts"));
 
-    if (extra) console.log(extra);
-}
-
-export async function Interface(title: string, choices: { value: number; name: string, cb?: () => void }[], extra?: string): Promise<number> {
-    const inquirer = await import("inquirer");
-
-    logo(extra);
-    console.log("=".repeat(25).green);
-    console.log("Select an option".magenta);
-    console.log("=".repeat(25).green);
-
-    const { option } = await inquirer.default.prompt([
-        {
-            type: "list",
-            name: "option",
-            message: title,
-            choices: choices
+    for (const command of commands) {
+        try {
+            delete require.cache[require.resolve(`./commands/${command}`)];
+            require(`./commands/${command}`);
+        } catch (e) {
+            throw e;
         }
-    ]);
-
-    return option;
+    }
 }
 
 interface PackageInfoJson {
@@ -277,4 +240,19 @@ declare module "whatsapp-web.js" {
     interface Client {
         isReady: boolean;
     }
+
+    class Contact {
+        isAdmin(group: GroupChat): boolean;
+    }
+
+    interface Message {
+        _data: {
+            size: number;
+            isGif: boolean
+        }
+    }
+}
+
+Contact.prototype.isAdmin = function(group: GroupChat) {
+    return group.participants.some(c => c.id._serialized === this.id._serialized && (c.isAdmin || c.isSuperAdmin));
 }

@@ -1,75 +1,54 @@
-import { goBack, mainMenu } from "../index";
-import { Interface, logo, NpmPlugin } from "../Utils";
+import { Choice, GoBack, ListMenu, logo, MainMenu } from "../api/index";
+import { NpmPlugin } from "../Utils";
+import * as Spinner from "loading-spinner";
 
 export async function pluginsMenu() {
+    logo("Searching plugins...".cyan);
+    Spinner.start(400, {
+        hideCursor: true,
+        clearChar: true,
+        clearLine: true,
+        doNotBlock: false
+    });
     const availablePlugins = await NpmPlugin.search();
 
-    const choices = [
-        ...availablePlugins.map((plugin, index) => {
-            return {
-                name: `${plugin.name.yellow} v${plugin.version.blue} ${plugin.installed ? "Installed".green : "Not installed".red}`,
-                value: index + 1
-            }
+    Spinner.stop();
+    const choices = availablePlugins.map((plugin) => new Choice(`${plugin.name.yellow} v${plugin.version.blue} ${plugin.installed ? "Installed".green : "Not installed".red}`));
+
+    logo();
+    const option = await new ListMenu("Available Plugins:", choices, () => {
+        logo();
+        MainMenu.show();
+    }).show();
+    const plugin = availablePlugins[option];
+
+    if (!plugin) return;
+
+    new ListMenu(plugin.name.yellow, (!plugin.installed) ? [
+        new Choice("Install", async () => {
+            console.log(`Installing ${plugin.name.green}...`.magenta);
+            await plugin.install();
+            logo(`${plugin.name} installed`.green);
+            await GoBack.show();
+            pluginsMenu();
         }),
-        {
-            name: "Go Back",
-            value: availablePlugins.length + 1
-        }
-    ]
-
-    const option = await Interface("Available plugins:", choices);
-
-    if (option === availablePlugins.length + 1) return mainMenu();
-    const plugin = availablePlugins[option - 1];
-
-    const actionList = (!plugin.installed) ? [
-        {
-            name: "Install",
-            value: 1,
-            cb: async () => {
-                console.log(`Installing ${plugin.name.green}...`.magenta);
-                await plugin.install();
-                await goBack(`${plugin.name} installed`.green);
-                pluginsMenu();
-            }
-        },
-        {
-            name: "Go back",
-            value: 2,
-            cb: async () => {
-                logo("Searching plugins...".cyan);
-                pluginsMenu();
-            }
-        }
+        new Choice("See Description", async () => {
+            console.log("Work in progress".bgRed)
+        })
     ] : [
-        {
-            name: "Search for updates",
-            value: 1,
-            cb: async () => {
-                await goBack("Unavailable yet".red)
-                pluginsMenu();
-            }
-        },
-        {
-            name: "Uninstall",
-            value: 2,
-            cb: async () => {
-                console.log(`Removing ${plugin.name}`.yellow);
-                await plugin.uninstall();
-                goBack(`${plugin.name} removed`.green);
-            }
-        },
-        {
-            name: "Go back",
-            value: 3,
-            cb: () => {
-                logo("Searching plugins...".cyan);
-                pluginsMenu();
-            }
-        }
-    ]
-
-    const action = await Interface(plugin.name.yellow, actionList);
-
-    actionList[action - 1].cb();
+        new Choice("Search for Updated", async () => {
+            logo("Unavailable yet".red);
+            await GoBack.show();
+            pluginsMenu();
+        }),
+        new Choice("Uninstall", async () => {
+            console.log(`Removing ${plugin.name}`.yellow);
+            await plugin.uninstall();
+            logo(`${plugin.name} removed`.green);
+            GoBack.show();
+        })
+    ], () => {
+        logo();
+        pluginsMenu();
+    }).show();
 }
