@@ -1,7 +1,6 @@
 import { Choice, GoBack, ListMenu, logo, MainMenu } from "../api/index";
 import { NpmPlugin } from "../Utils";
-// @ts-ignore
-import * as Spinner from "loading-spinner";
+import Spinner from "../loading";
 
 export async function pluginsMenu() {
     logo("Searching plugins...".cyan);

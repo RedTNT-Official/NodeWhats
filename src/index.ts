@@ -1,7 +1,6 @@
 import { client, enterToContinue, logo, MainMenu } from "./api/index";
 import { loadListeners, loadPlugins } from "./Utils";
-// @ts-ignore
-import * as Spinner from "loading-spinner";
+import Spinner from "./loading";
 import "colors";
 
 Spinner.setSequence(['|'.cyan, '/'.cyan, '—'.cyan, '\\'.cyan]);
