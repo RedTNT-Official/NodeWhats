@@ -1,4 +1,5 @@
 import { Client, Contact, GroupChat, LocalAuth, Message } from "whatsapp-web.js";
+// @ts-ignore
 import * as interruptedPrompt from "inquirer-interrupted-prompt";
 import { createInterface } from "readline";
 import { CommandRegistry, reloadPlugins } from "../Utils";

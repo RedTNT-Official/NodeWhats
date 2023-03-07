@@ -1,7 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "fs";
-import { client, Command, GoBack, logo, MainMenu } from "./api/index";
+import { client, Command, GoBack, MainMenu } from "./api/index";
 import { Contact, GroupChat } from "whatsapp-web.js";
-import * as inquirer from "inquirer";
 import { exec } from "child_process";
 import { join } from "path";
 

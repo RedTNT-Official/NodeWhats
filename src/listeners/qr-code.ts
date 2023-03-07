@@ -1,4 +1,5 @@
 import { client, logo } from "../api/index";
+// @ts-ignore
 import * as Spinner from "loading-spinner";
 import terminal from "qrcode-terminal";
 

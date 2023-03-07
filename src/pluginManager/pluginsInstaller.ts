@@ -1,5 +1,6 @@
 import { Choice, GoBack, ListMenu, logo, MainMenu } from "../api/index";
 import { NpmPlugin } from "../Utils";
+// @ts-ignore
 import * as Spinner from "loading-spinner";
 
 export async function pluginsMenu() {
