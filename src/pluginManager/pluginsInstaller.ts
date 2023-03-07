@@ -1,4 +1,4 @@
-import { Choice, GoBack, ListMenu, logo, MainMenu } from "../api/index";
+import { Choice, enterToContinue, GoBack, ListMenu, logo, MainMenu } from "../api/index";
 import { NpmPlugin } from "../Utils";
 import Spinner from "../loading";
 
@@ -24,7 +24,7 @@ export async function pluginsMenu() {
 
     if (!plugin) return;
 
-    new ListMenu(plugin.name.yellow, (!plugin.installed) ? [
+    new ListMenu(plugin.name.yellow, ((!plugin.installed) ? [
         new Choice("Install", async () => {
             console.log(`Installing ${plugin.name.green}...`.magenta);
             await plugin.install();
@@ -33,7 +33,10 @@ export async function pluginsMenu() {
             pluginsMenu();
         }),
         new Choice("See Description", async () => {
-            console.log("Work in progress".bgRed)
+            console.log("Work in progress".bgRed);
+            await enterToContinue();
+            logo();
+            MainMenu.show();
         })
     ] : [
         new Choice("Search for Updated", async () => {
@@ -47,7 +50,7 @@ export async function pluginsMenu() {
             logo(`${plugin.name} removed`.green);
             GoBack.show();
         })
-    ], () => {
+    ]), () => {
         logo();
         pluginsMenu();
     }).show();
