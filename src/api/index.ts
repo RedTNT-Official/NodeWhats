@@ -7,6 +7,7 @@ import PasswordPrompt from "inquirer/lib/prompts/password";
 import * as inquirer from "inquirer";
 import InputPrompt from "inquirer/lib/prompts/input";
 import ListPrompt from "inquirer/lib/prompts/list";
+import "colors";
 
 export let prefix = ".";
 
@@ -72,7 +73,7 @@ client.on("message_create", async (msg: Message) => {
     if (
         (!chat.isGroup && !msg.fromMe && command.admin) ||
         (!msg.fromMe && command.admin && chat.isGroup && !contact.isAdmin(chat))
-    ) return msg.reply("*No tienes permiso para ejecutar este comando*");
+    ) return msg.reply("*You do not have permission to execute this command*");
 
     command.cb(contact, msg, args);
 });
