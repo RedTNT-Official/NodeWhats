@@ -4,6 +4,7 @@
   "description": "",
   "main": "src/index.ts",
   "scripts": {
+    "prestart": "npm i",
     "start": "ts-node src/index",
     "newplugin": "ts-node src/pluginManager/newPlugin"
   },
