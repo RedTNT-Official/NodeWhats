@@ -70,35 +70,19 @@ inquirer.registerPrompt("intr-password", interruptedPrompt.from(PasswordPrompt))
 
 export class Menu {
     title: string;
-    type: MenuType;
+    type: string;
     choices: Choice[];
     originalLength: number;
-
-    constructor(title: string, type: MenuType, choices?: Choice[]) {
-        this.title = title;
-        this.type = type;
-        this.choices = choices || [];
-        this.originalLength = choices?.length || 0;
-    }
-
-    addChoice(choice: Choice): this {
-        this.choices.push(choice);
-        return this;
-    }
-
-    resetChoices() {
-        this.choices = this.choices.slice(0, this.originalLength);
-    }
-}
-
-export class ListMenu extends Menu {
     itrCallback?: () => void;
 
-    constructor(title: string, choices?: Choice[], itrCallback?: () => void) {
-        super(title, itrCallback ? "intr-list" : "list", choices);
+    constructor(title: string, type: MenuType, choices: Choice[], itrCallback?: () => void) {
+        this.title = title;
+        this.type = itrCallback ? `intr-${type}` : type;
+        this.choices = choices || [];
+        this.originalLength = choices?.length || 0;
         this.itrCallback = itrCallback;
     }
-
+    
     show(): Promise<number> {
         return new Promise(async (resolve) => {
             try {
@@ -107,7 +91,7 @@ export class ListMenu extends Menu {
                 console.log("=".repeat(25).green);
 
                 const { option } = await inquirer.prompt([
-                    this.getParsed()
+                    this.parse()
                 ]);
                 this.choices[option - 1].cb(option - 1);
                 resolve(option - 1);
@@ -119,55 +103,20 @@ export class ListMenu extends Menu {
         });
     }
 
-    getParsed() {
+    addChoice(choice: Choice): this {
+        this.choices.push(choice);
+        return this;
+    }
+
+    resetChoices() {
+        this.choices = this.choices.slice(0, this.originalLength);
+    }
+
+    parse() {
         return {
             type: this.type,
             name: "option",
             message: this.title + "\n",
-            choices: this.choices.map(({ name }, index) => {
-                return {
-                    name,
-                    value: index + 1
-                }
-            })
-        }
-    }
-}
-
-export class InputMenu extends Menu {
-    itrCallback?: () => void;
-
-    constructor(title: string, choices?: Choice[], interruptedCallback?: () => void) {
-        super(title, interruptedCallback ? "intr-input" : "input", choices);
-    }
-
-    getParsed() {
-        return {
-            type: this.type,
-            name: "option",
-            message: this.title,
-            choices: this.choices.map(({ name }, index) => {
-                return {
-                    name,
-                    value: index + 1
-                }
-            })
-        }
-    }
-}
-
-export class PasswordMenu extends Menu {
-    itrCallback?: () => void;
-
-    constructor(title: string, choices?: Choice[], interruptedCallback?: () => void) {
-        super(title, interruptedCallback ? "intr-password" : "password", choices);
-    }
-
-    getParsed() {
-        return {
-            type: this.type,
-            name: "option",
-            message: this.title,
             choices: this.choices.map(({ name }, index) => {
                 return {
                     name,
@@ -188,9 +137,9 @@ export class Choice {
     }
 }
 
-type MenuType = "intr-input" | "input" | "number" | "intr-password" | "password" | "intr-list" | "list" | "rawlist" | "expand" | "checkbox" | "confirm" | "editor";
+type MenuType = "input" | "number" | "password" | "list" | "rawlist" | "expand" | "checkbox" | "confirm" | "editor";
 
-export const MainMenu = new ListMenu("Main Menu", [
+export const MainMenu = new Menu("Main Menu", "list", [
     new Choice("Search Plugins", () => {
         pluginsMenu();
     }),
@@ -215,7 +164,7 @@ export const MainMenu = new ListMenu("Main Menu", [
     })
 ]);
 
-export const GoBack = new ListMenu("Actions", [new Choice("Go Back")]);
+export const GoBack = new Menu("Actions", "list", [new Choice("Go Back")]);
 
 export function enterToContinue(): Promise<void> {
     return new Promise((resolve) => {

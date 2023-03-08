@@ -1,4 +1,4 @@
-import { Choice, enterToContinue, GoBack, ListMenu, logo, MainMenu } from "../api/index";
+import { Choice, enterToContinue, GoBack, logo, MainMenu, Menu } from "../api/index";
 import { NpmPlugin } from "../Utils";
 import Spinner from "../loading";
 
@@ -16,7 +16,7 @@ export async function pluginsMenu() {
     const choices = availablePlugins.map((plugin) => new Choice(`${plugin.name.yellow} v${plugin.version.blue} ${plugin.installed ? "Installed".green : "Not installed".red}`));
 
     logo();
-    const option = await new ListMenu("Available Plugins:", choices, () => {
+    const option = await new Menu("Available Plugins:", "list", choices, () => {
         logo();
         MainMenu.show();
     }).show();
@@ -24,7 +24,7 @@ export async function pluginsMenu() {
 
     if (!plugin) return;
 
-    new ListMenu(plugin.name.yellow, ((!plugin.installed) ? [
+    new Menu(plugin.name.yellow, "list", ((!plugin.installed) ? [
         new Choice("Install", async () => {
             console.log(`Installing ${plugin.name.green}...`.magenta);
             await plugin.install();
