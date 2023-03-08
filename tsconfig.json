@@ -9,7 +9,7 @@
     ],
     "esModuleInterop": true,
     "module": "CommonJS",
-    "moduleResolution": "node16",
+    "moduleResolution": "node",
     "alwaysStrict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,

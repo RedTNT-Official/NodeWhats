@@ -1,5 +1,5 @@
-import { Command, prefix } from "../api/index";
 import { CommandRegistry } from "../Utils";
+import { Command, prefix } from "../api/index";
 
 Command.register("help", "Get the available commands", (_contact, msg, args) => {
     if (args.length > 0) {

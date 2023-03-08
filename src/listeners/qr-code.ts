@@ -1,6 +1,6 @@
 import { client, logo } from "../api/index";
-import Spinner from "../loading";
 import terminal from "qrcode-terminal";
+import Spinner from "../loading";
 
 client.on("qr", (base64: string) => {
     Spinner.stop();

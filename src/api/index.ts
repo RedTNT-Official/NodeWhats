@@ -1,8 +1,8 @@
-import { Client, Contact, GroupChat, LocalAuth, Message } from "whatsapp-web.js";
+import { Client, Contact, LocalAuth, Message } from "whatsapp-web.js";
+import { CommandRegistry, loadCommands, reloadPlugins } from "../Utils";
 // @ts-ignore
 import * as interruptedPrompt from "inquirer-interrupted-prompt";
 import { createInterface } from "readline";
-import { CommandRegistry, reloadPlugins } from "../Utils";
 import { pluginsMenu } from "../pluginManager/pluginsInstaller";
 import PasswordPrompt from "inquirer/lib/prompts/password";
 import * as inquirer from "inquirer";
@@ -10,7 +10,7 @@ import InputPrompt from "inquirer/lib/prompts/input";
 import ListPrompt from "inquirer/lib/prompts/list";
 import "colors";
 
-export let prefix = ".";
+export const prefix = ".";
 
 export const client = new Client({
     authStrategy: new LocalAuth(),
@@ -60,24 +60,6 @@ export enum CommandPermissionLevel {
     Normal,
     Admin
 }
-
-client.on("message_create", async (msg: Message) => {
-    if (msg.from === 'status@broadcast' || !msg.body.startsWith(prefix)) return;
-
-    const contact = await msg.getContact();
-    const [cmd, ...args] = msg.body.trim().slice(prefix.length).split(/ +/g);
-    const command = CommandRegistry.get(cmd.toLowerCase());
-    if (!command) return;
-
-    const chat = await msg.getChat() as GroupChat;
-
-    if (
-        (!chat.isGroup && !msg.fromMe && command.admin) ||
-        (!msg.fromMe && command.admin && chat.isGroup && !contact.isAdmin(chat))
-    ) return msg.reply("*You do not have permission to execute this command*");
-
-    command.cb(contact, msg, args);
-});
 
 // @ts-ignore
 inquirer.registerPrompt("intr-list", interruptedPrompt.from(ListPrompt));
@@ -214,6 +196,7 @@ export const MainMenu = new ListMenu("Main Menu", [
     }),
     new Choice("Reload Plugins", async () => {
         logo();
+        await loadCommands();
         await reloadPlugins();
         await enterToContinue();
         logo();

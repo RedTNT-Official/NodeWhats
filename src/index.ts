@@ -1,5 +1,5 @@
 import { client, enterToContinue, logo, MainMenu } from "./api/index";
-import { loadListeners, loadPlugins } from "./Utils";
+import { loadCommands, loadListeners, loadPlugins } from "./Utils";
 import Spinner from "./loading";
 import "colors";
 
@@ -12,20 +12,20 @@ Spinner.start(400, {
 });
 
 logo();
-
 loadListeners();
+
+client.on("authenticated", () => {
+    Spinner.stop();
+    logo("Authenticated!".green);
+});
 
 client.on("ready", async () => {
     client.isReady = true;
+    await loadCommands();
     await loadPlugins();
     await enterToContinue();
     logo("Client ready!".green);
     MainMenu.show();
-});
-
-client.on("authenticated", () => {
-    Spinner.stop();
-    console.log("Authenticated!".green);
 });
 
 client.initialize();

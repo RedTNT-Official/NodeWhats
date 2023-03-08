@@ -89,17 +89,24 @@ export class LocalPlugin extends Plugin {
         return Boolean(mainPackJson().dependencies[this.fullname]);
     }
 
-    load() {
-        try {
-            require(`../plugins/${this.dirname}`);
-        } catch (e) {
-            console.log(e);
-        }
+    load(): Promise<void> {
+        return new Promise(async (resolve) => {
+            try {
+                await import(`../plugins/${this.dirname}`);
+                resolve();
+            } catch (e) {
+                console.log(e);
+            }
+        });
     }
 
     unload() {
         try {
-            delete require.cache[require.resolve(`../plugins/${this.dirname}`)];
+            execOnDirFiles(join(pluginsPath, this.dirname), (file, path) => {
+                if (!file.endsWith(".ts")) return;
+
+                delete require.cache[path];
+            });
         } catch (e) {
             console.log(e);
         }
@@ -133,14 +140,15 @@ export async function loadPlugins() {
         console.log(`Loading NPM plugin${npm.length > 0 ? "s" : ""} (${npm.length} plugin${npm.length > 0 ? "s" : ""})`.cyan);
         console.log("=".repeat(30).magenta);
 
-        npm.forEach((plugin) => {
+
+        for (const plugin of npm) {
             console.log(`Loading ${plugin.name}`.green);
             try {
-                require(plugin.fullname);
+                await import(plugin.fullname);
             } catch (e) {
                 throw e
             }
-        });
+        }
         console.log("\n");
     }
 
@@ -151,10 +159,11 @@ export async function loadPlugins() {
         console.log(`Loading Local plugin${local.length > 0 ? "s" : ""} (${local.length} plugin${npm.length > 0 ? "s" : ""})`.cyan);
         console.log("=".repeat(30).magenta);
 
-        local.forEach((plugin) => {
+        for (const plugin of local) {
+            plugin.unload();
             console.log(`Loading ${plugin.name}`.green);
-            plugin.load();
-        });
+            await plugin.load();
+        }
     }
 
     if (npm.length === 0 && local.length === 0) console.log("No plugins".cyan);
@@ -177,24 +186,34 @@ export async function reloadPlugins() {
     client.removeAllListeners();
     MainMenu.resetChoices();
     GoBack.resetChoices();
-    LocalPlugin.all().forEach(p => p.unload());
-    CommandRegistry.clear();
     loadListeners();
-    loadCommands();
-    await loadPlugins();
+    loadPlugins();
 }
 
-function loadCommands() {
+export async function loadCommands() {
+    CommandRegistry.clear();
     const commands = readdirSync(join(__dirname, "commands")).filter(f => f.endsWith(".ts"));
 
     for (const command of commands) {
         try {
             delete require.cache[require.resolve(`./commands/${command}`)];
-            require(`./commands/${command}`);
+            await import(`./commands/${command}`);
         } catch (e) {
             throw e;
         }
     }
+}
+
+function execOnDirFiles(path: string, cb: (fileName: string, filePath: string) => void) {
+    const files = readdirSync(path).filter(f => f !== "node_modules");
+
+    files.forEach((file) => {
+        const filePath = join(path, file);
+
+        if (statSync(filePath).isDirectory()) return execOnDirFiles(filePath, cb);
+
+        cb(file, filePath);
+    });
 }
 
 interface PackageInfoJson {
@@ -252,6 +271,6 @@ declare module "whatsapp-web.js" {
     }
 }
 
-Contact.prototype.isAdmin = function(group: GroupChat) {
+Contact.prototype.isAdmin = function (group: GroupChat) {
     return group.participants.some(c => c.id._serialized === this.id._serialized && (c.isAdmin || c.isSuperAdmin));
 }
