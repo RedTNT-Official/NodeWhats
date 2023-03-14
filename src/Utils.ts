@@ -1,13 +1,11 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "fs";
-import { client, Command, GoBack, MainMenu } from "./api/index";
+import { client, CommandRegistry, GoBack, MainMenu } from "bot";
 import { Contact, GroupChat } from "whatsapp-web.js";
 import { exec } from "child_process";
 import { join } from "path";
 
 const pluginsPath = join(process.cwd(), "plugins");
 const mainJsonPath = join(process.cwd(), "package.json");
-
-export const CommandRegistry = new Map<string, Command>();
 
 class Plugin {
     name: string;

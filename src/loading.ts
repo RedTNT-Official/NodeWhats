@@ -1,5 +1,5 @@
-import ansi from "ansi";
 import readline from "readline";
+import ansi from "ansi";
 
 const cursor = ansi(process.stdout);
 

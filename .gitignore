@@ -1,4 +1,5 @@
 /node_modules
 /.wwebjs_auth
+/auth_info
 /.vscode
 /plugins/**

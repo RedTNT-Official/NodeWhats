@@ -1,5 +1,4 @@
-import { CommandRegistry } from "../Utils";
-import { Command, prefix } from "../api/index";
+import { Command, CommandRegistry, prefix } from "bot";
 
 Command.register("help", "Get the available commands", (_contact, msg, args) => {
     if (args.length > 0) {
@@ -10,7 +9,7 @@ Command.register("help", "Get the available commands", (_contact, msg, args) => 
             return ` | ${prefix}${(command?.name || c)} ${(command?.admin) ? "*(Admin)*" : ""}: ${description}`;
         }).join("\n");
         return msg.reply(response);
-    };
+    }
 
     const response = "┌── Comandos\n |\n" + Array.from(CommandRegistry.values()).filter(c => !c.admin).map(c => " | " + prefix + c.name).join("\n");
     msg.reply(response);

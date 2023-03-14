@@ -1,4 +1,4 @@
-import { Choice, enterToContinue, GoBack, logo, MainMenu, Menu } from "../api/index";
+import { Choice, enterToContinue, GoBack, logo, MainMenu, Menu } from "bot";
 import { NpmPlugin } from "../Utils";
 import Spinner from "../loading";
 
