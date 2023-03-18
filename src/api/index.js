@@ -100,7 +100,7 @@ class Menu {
         if (!client.terminal) return new Promise(async (resolve) => {
             try {
                 console.log("=".repeat(25).green);
-                console.log("Select an option".magenta);
+                console.log("Write an option number".magenta);
                 console.log("=".repeat(25).green);
 
                 const noSeparators = this.choices.filter(c => {
@@ -124,8 +124,7 @@ class Menu {
                     output: process.stdout
                 });
 
-                line.question("Write an option number", (output) => {
-                    console.log(this.itrCallback);
+                line.question("", (output) => {
                     if (this.itrCallback && /return|exit|back/.exec(output.trim().toLowerCase())) return this.itrCallback();
                     const option = Number(output.trim());
 
@@ -180,8 +179,7 @@ class Menu {
     }
 
     addSeparator(text) {
-        if (!client.terminal) this.choices.push("───────────────");
-        else this.choices.push(new inquirer.Separator(text || "───────────────"));
+        this.choices.push(new inquirer.Separator(text || "───────────────"));
         return this;
     }
 

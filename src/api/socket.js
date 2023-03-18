@@ -168,7 +168,7 @@ class Message {
      * @type { boolean }
      */
     hasMedia
-    
+
     /**
      * @param { Client } client
      * @param { proto.IWebMessageInfo } data 
@@ -180,9 +180,10 @@ class Message {
         this.author = (remoteJid?.endsWith("@s.whatsapp.net")) ?
             new User(client, pushName || verifiedBizName || "", remoteJid.split("@")[0], remoteJid) : new GroupUser(client, remoteJid, pushName || "", participant.split("@")[0], participant);
         this.fromMe = fromMe;
+        this.isReply = !!message[Object.keys(message)[0]]?.contextInfo;
         const type = Object.keys(data.message)[0];
         this.content = message?.conversation || message?.extendedTextMessage?.text || message[type].caption || "";
-        this.hasMedia = ["imageMessage", "videoMessage", "audioMessage", "documentMessage", "documentWithCaptionMessage"].includes(type);
+        this.hasMedia = ["imageMessage", "videoMessage", "stickerMessage", "audioMessage", "documentMessage", "documentWithCaptionMessage"].includes(type);
         if (message.documentWithCaptionMessage) this.content = message.documentWithCaptionMessage.message.documentMessage.caption;
     }
 
@@ -252,9 +253,28 @@ class Message {
     }
 
     /**
-     * @returns { Promise<Message> | undefined }
+     * @returns { Message | undefined }
      */
-    getQuotedMsg() { }
+    getQuotedMsg() {
+        if (!this.isReply) return;
+
+        /**
+         * @type { proto.IContextInfo }
+         */
+        let ctx = this._data.message[Object.keys(this._data.message)[0]]?.contextInfo;
+
+        if (!ctx) return;
+
+        return new Message(this.client, {
+            key: {
+                fromMe: (ctx.participant || ctx.remoteJid) == this.author.id,
+                participant: ctx.participant,
+                remoteJid: ctx.remoteJid || this._data.key.remoteJid,
+                id: ctx.stanzaId
+            },
+            message: ctx.quotedMessage
+        })
+    }
 }
 exports.Message = Message;
 
