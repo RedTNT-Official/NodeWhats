@@ -10,7 +10,9 @@ export class Client extends EventEmitter {
 
     start(): Promise<this>
     destroy(): void;
+
     send(id: string, content: string | Message | Media, opts?: MiscMessageGenerationOptions): void;
+    getProfilePicUrl(id: string): Promise<string | undefined>;
 
     on<T extends keyof ClientEvents>(event: T, listener: (args: ClientEvents[T]) => void): this;
 }
@@ -24,6 +26,7 @@ export class User {
     protected constructor();
 
     sendMessage(content: Message | Media, opts: MiscMessageGenerationOptions): Promise<void>;
+    getProfilePicUrl(): Promise<string | undefined>;
 
     getProfile(): Promise<WABusinessProfile>;
 }
@@ -39,6 +42,7 @@ export class GroupUser extends User {
     sendDM(content: Message | Media, opts: MiscMessageGenerationOptions): Promise<void>;
 
     getProfile(): Promise<WABusinessProfile>;
+    getGroup(): Promise<Group>;
 }
 
 export class Message {
@@ -56,9 +60,9 @@ export class Message {
 
     getChat(): Promise<Chat>;
 
-    downloadMedia(): Promise<Media | undefined>;
+    downloadMedia(): Promise<Media> | undefined;
 
-    getQuotedMsg(): Promise<Message | undefined>;
+    getQuotedMsg(): Promise<Message> | undefined;
 }
 
 export class Media {

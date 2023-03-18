@@ -1,5 +1,6 @@
 import { Client, Message, User } from "./socket";
 export { Sticker, StickerTypes } from "wa-sticker-formatter";
+import "colors";
 
 export const prefix = ".";
 export const CommandRegistry: Map<string, Command>;

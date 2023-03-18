@@ -67,7 +67,6 @@ class Client extends EventEmitter {
      */
     send(id, content, opts) {
         return new Promise(async (resolve) => {
-            console.log(id.red);
             let msg;
             if (typeof content === "string") msg = await this.socket.sendMessage(id, { text: content }, opts);
             else if (content instanceof Media) msg = await this.socket.sendMessage(id, {
@@ -83,6 +82,17 @@ class Client extends EventEmitter {
 
             tempStore[msg.key.id] = msg;
             resolve(new Message(this, msg));
+        });
+    }
+
+    /**
+     * @param { string } id 
+     * @returns { Promise<string | undefined> }
+     */
+    getProfilePicUrl(id) {
+        return new Promise(async (resolve) => {
+            const url = await this.socket.profilePictureUrl(id, "image");
+            resolve(url);
         });
     }
 
@@ -118,7 +128,6 @@ class Client extends EventEmitter {
 
         this.emitter.on("messages.upsert", ({ messages }) => {
             messages.forEach((message) => {
-                // console.log(JSON.stringify(message, null, 2));
                 if (message.remoteJid === "status@broadcast" || !message.message) return;
 
                 this.emit("message", new Message(this, message));
@@ -159,6 +168,7 @@ class Message {
      * @type { boolean }
      */
     hasMedia
+    
     /**
      * @param { Client } client
      * @param { proto.IWebMessageInfo } data 
@@ -168,9 +178,8 @@ class Message {
         this.client = client;
         this._data = data;
         this.author = (remoteJid?.endsWith("@s.whatsapp.net")) ?
-            new User(client, pushName || verifiedBizName || "", remoteJid.split("@")[0], remoteJid) : new GroupUser(client, pushName || "", participant.split("@")[0], participant);
+            new User(client, pushName || verifiedBizName || "", remoteJid.split("@")[0], remoteJid) : new GroupUser(client, remoteJid, pushName || "", participant.split("@")[0], participant);
         this.fromMe = fromMe;
-
         const type = Object.keys(data.message)[0];
         this.content = message?.conversation || message?.extendedTextMessage?.text || message[type].caption || "";
         this.hasMedia = ["imageMessage", "videoMessage", "audioMessage", "documentMessage", "documentWithCaptionMessage"].includes(type);
@@ -220,7 +229,7 @@ class Message {
     }
 
     /**
-     * @returns { Media | undefined }
+     * @returns { Promise<Media> | undefined }
      */
     downloadMedia() {
         if (!this.hasMedia) return;
@@ -243,7 +252,7 @@ class Message {
     }
 
     /**
-     * @returns { Message | undefined }
+     * @returns { Promise<Message> | undefined }
      */
     getQuotedMsg() { }
 }
@@ -355,6 +364,16 @@ class User {
             resolve(profile)
         });
     }
+
+    /**
+     * @returns { Promise<string | undefined> }
+     */
+    getProfilePicUrl() {
+        return new Promise(async (resolve) => {
+            const url = await this.client.getProfilePicUrl(this.id);
+            resolve(url);
+        });
+    }
 }
 exports.User = User;
 
@@ -371,15 +390,19 @@ class GroupUser extends User {
     group;
 
     /**
-     * @param { Client } client 
-     * @param { Group } group 
-     * @param { string } pushname 
-     * @param { string } number 
-     * @param { string } id 
+     * @param { Client } client
+     * @param { string } groupId
+     * @param { string } pushname
+     * @param { string } number
+     * @param { string } id
      */
-    constructor(client, group, pushname, number, id) {
+    constructor(client, groupId, pushname, number, id) {
         super(client, pushname, number, id);
-        this.group = group;
+        this.group = groupId;
+        this.client = client;
+        this.pushname = pushname;
+        this.number = number;
+        this.id = id;
     }
 
     sendDM(content, opts) {
@@ -394,6 +417,17 @@ class GroupUser extends User {
         return new Promise(async (resolve) => {
             const profile = await this.client.socket.getBusinessProfile(this.id);
             resolve(profile)
+        });
+    }
+
+    /**
+     * 
+     * @returns { Promise<Group> }
+     */
+    getGroup() {
+        return new Promise(async (resolve) => {
+            const group = new Group(this.client, await this.client.socket.groupMetadata(this.group));
+            resolve(group);
         });
     }
 }
@@ -443,6 +477,17 @@ class Group extends Chat {
         super(client, id);
         this.name = data.subject;
         this.description = data.desc;
+    }
+
+    /**
+     * @param { Client } client
+     * @param { string } id
+     * @returns { Promise<Group> }
+     */
+    create(client, id) {
+        return new Promise(async (resolve) => {
+            resolve(new Group(client, await client.socket.groupMetadata(id)));
+        });
     }
 
     isAdmin(user) {

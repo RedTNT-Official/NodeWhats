@@ -89,10 +89,12 @@ export class LocalPlugin extends Plugin {
     }
 
     load(): Promise<void> {
-        return new Promise(async (resolve) => {
+        return new Promise((resolve) => {
             try {
-                await import(`../plugins/${this.dirname}`);
-                resolve();
+                exec(`cd ../plugins/${this.dirname} && npm i`, async () => {
+                    await import(`../plugins/${this.dirname}`);
+                    resolve();
+                });
             } catch (e) {
                 console.log(e);
             }
