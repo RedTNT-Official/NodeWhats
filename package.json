@@ -17,6 +17,7 @@
   "dependencies": {
     "@adiwajshing/baileys": "github:adiwajshing/Baileys",
     "@adiwajshing/keyed-db": "^0.2.4",
+    "@hapi/boom": "^10.0.1",
     "@types/ansi": "^0.3.3",
     "@types/inquirer": "8.2.6",
     "@types/mime-db": "^1.43.1",
@@ -27,16 +28,12 @@
     "inquirer": "8.2.5",
     "inquirer-interrupted-prompt": "^2.0.1",
     "pino": "^8.11.0",
-    "qr-image": "^3.2.0",
     "qrcode-terminal": "0.12.0",
     "ts-node": "^10.9.1",
     "tslib": "2.5.0",
-    "wa-sticker-formatter": "^4.4.4",
-    "whatsapp-web.js": "1.19.4",
-    "yaml": "2.2.1"
+    "wa-sticker-formatter": "^4.4.4"
   },
   "devDependencies": {
-    "@types/node": "^18.14.0",
-    "@types/qr-image": "^3.2.5"
+    "@types/node": "^18.14.0"
   }
 }

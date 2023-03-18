@@ -1,11 +1,12 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "fs";
 import { client, CommandRegistry, GoBack, MainMenu } from "bot";
-import { Contact, GroupChat } from "whatsapp-web.js";
 import { exec } from "child_process";
 import { join } from "path";
 
-const pluginsPath = join(process.cwd(), "plugins");
+const pluginsPath = join(__dirname, "..", "plugins");
 const mainJsonPath = join(process.cwd(), "package.json");
+
+if (!existsSync(pluginsPath)) mkdirSync(pluginsPath);
 
 class Plugin {
     name: string;
@@ -250,25 +251,4 @@ interface PackageJson {
     licence: string;
     dependencies: Record<string, string>;
     devDependencies: Record<string, string>;
-}
-
-declare module "whatsapp-web.js" {
-    interface Client {
-        isReady: boolean;
-    }
-
-    class Contact {
-        isAdmin(group: GroupChat): boolean;
-    }
-
-    interface Message {
-        _data: {
-            size: number;
-            isGif: boolean
-        }
-    }
-}
-
-Contact.prototype.isAdmin = function (group: GroupChat) {
-    return group.participants.some(c => c.id._serialized === this.id._serialized && (c.isAdmin || c.isSuperAdmin));
 }

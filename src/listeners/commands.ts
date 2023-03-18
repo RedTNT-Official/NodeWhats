@@ -4,12 +4,12 @@ import { Message } from "bot/socket";
 client.on("message", async (msg: Message) => {
     if (!msg.content.startsWith(prefix)) return;
 
-    const contact = msg.from;
+    const contact = msg.author;
     const [cmd, ...args] = msg.content.trim().slice(prefix.length).split(/ +/g);
     const command = CommandRegistry.get(cmd.toLowerCase());
     if (!command) return;
 
-    const chat = msg.chat;
+    const chat = await msg.getChat();
 
     if (
         (!chat.isGroup() && !msg.fromMe && command.admin) ||

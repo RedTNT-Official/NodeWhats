@@ -1,13 +1,11 @@
-const { default: makeWASocket, useMultiFileAuthState, proto, MiscMessageGenerationOptions, Browsers, downloadMediaMessage } = require("@adiwajshing/baileys");
+const { default: makeWASocket, useMultiFileAuthState, proto, MiscMessageGenerationOptions, Browsers, downloadMediaMessage, DisconnectReason } = require("@adiwajshing/baileys");
 const qrterminal = require("qrcode-terminal");
-const { readFileSync, statSync } = require("fs");
 const EventEmitter = require("events");
+const { statSync } = require("fs");
 const P = require("pino");
+const { Boom } = require("@hapi/boom");
 
-const logger = P({ level: "silent" });
-logger.error = (obj, msg) => {
-    this.emit("error", (typeof msg === "string") ? msg : obj);
-}
+const tempStore = {};
 
 class Client extends EventEmitter {
     /**
@@ -18,6 +16,10 @@ class Client extends EventEmitter {
     saveCreds;
     opts;
     opened;
+    /**
+     * @type { boolean }
+     */
+    terminal = true;
 
     constructor(options) {
         super();
@@ -31,11 +33,21 @@ class Client extends EventEmitter {
             this.state = state;
             this.saveCreds = saveCreds;
 
+            const logger = P({ level: "fatal" });
+            logger.error = (obj, msg) => {
+                this.emit("error", (typeof msg === "string") ? msg : obj);
+            }
+
             const socket = makeWASocket({
                 ...this.opts?.baileysOpts,
                 logger,
                 auth: state,
                 browser: Browsers.appropriate("Desktop"),
+                getMessage: async (key) => {
+                    const { id } = key;
+                    console.log('Resending', id);
+                    return tempStore[id]?.message;
+                }
                 //syncFullHistory: true
             });
 
@@ -55,15 +67,22 @@ class Client extends EventEmitter {
      */
     send(id, content, opts) {
         return new Promise(async (resolve) => {
-            if (typeof content === "string") return this.socket.sendMessage(id, { text: content }, opts);
-            if (!content.isMedia()) return this.socket.sendMessage(id, { text: content.content }, opts);
+            console.log(id.red);
+            let msg;
+            if (typeof content === "string") msg = await this.socket.sendMessage(id, { text: content }, opts);
+            else if (content instanceof Media) msg = await this.socket.sendMessage(id, {
+                text: content.text,
+                video: (content.isVideo) ? content.buffer : undefined,
+                image: (content.isImage) ? content.buffer : undefined,
+                audio: (content.isAudio) ? content.buffer : undefined
+            }, opts);
 
-            const mimetype = content.mimetype.split("/")[0];
-            resolve(new Message(this, await this.socket.sendMessage(id, {
-                video: (mimetype === "video") ? content.buffer : undefined,
-                video: (mimetype === "image") ? content.buffer : undefined,
-                caption: content.text
-            }, opts)));
+            else msg = await this.socket.sendMessage(id, content, {
+                ...opts
+            });
+
+            tempStore[msg.key.id] = msg;
+            resolve(new Message(this, msg));
         });
     }
 
@@ -82,14 +101,11 @@ class Client extends EventEmitter {
             if (connection === "close") {
                 this.opened = false;
                 this.emit("close", lastDisconnect);
-                if (lastDisconnect?.error && this.opts?.shouldReconnect) {
-                    this.socket = makeWASocket({
-                        auth: this.state,
-                        browser: Browsers.appropriate("Desktop"),
-                        syncFullHistory: true
-                    });
-                    this.recoverListeners();
-                }
+                /**
+                 * @type { Boom }
+                 */
+                const error = lastDisconnect.error;
+                if (error?.output.statusCode !== DisconnectReason.loggedOut && this.opts?.shouldReconnect) this.start();
             }
 
             if (connection === "open") {
@@ -97,16 +113,13 @@ class Client extends EventEmitter {
                 this.emit("open", lastDisconnect);
             }
 
-            if (qr) {
-                this.emit("qr", qr);
-                if (!this.opts?.autoPrintQr) return;
-                qrterminal.generate(qr, { small: true });
-            }
+            if (qr) this.emit("qr", qr);
         });
 
         this.emitter.on("messages.upsert", ({ messages }) => {
             messages.forEach((message) => {
-                if (message.remoteJid === "status@broadcast") return;
+                // console.log(JSON.stringify(message, null, 2));
+                if (message.remoteJid === "status@broadcast" || !message.message) return;
 
                 this.emit("message", new Message(this, message));
             });
@@ -121,6 +134,7 @@ class Client extends EventEmitter {
         }
     }
 }
+exports.Client = Client;
 
 class Message {
     /**
@@ -152,21 +166,27 @@ class Message {
     constructor(client, data) {
         const { message, pushName, key: { remoteJid, participant, fromMe }, verifiedBizName } = data;
         this.client = client;
+        this._data = data;
         this.author = (remoteJid?.endsWith("@s.whatsapp.net")) ?
             new User(client, pushName || verifiedBizName || "", remoteJid.split("@")[0], remoteJid) : new GroupUser(client, pushName || "", participant.split("@")[0], participant);
-        this.content = message?.conversation || message?.extendedTextMessage?.text || "";
-        
         this.fromMe = fromMe;
+
+        const type = Object.keys(data.message)[0];
+        this.content = message?.conversation || message?.extendedTextMessage?.text || message[type].caption || "";
+        this.hasMedia = ["imageMessage", "videoMessage", "audioMessage", "documentMessage", "documentWithCaptionMessage"].includes(type);
+        if (message.documentWithCaptionMessage) this.content = message.documentWithCaptionMessage.message.documentMessage.caption;
     }
 
     /**
      * 
-     * @param { string | import("@adiwajshing/baileys").AnyMessageContent | Media} content
+     * @param { string | import("@adiwajshing/baileys").AnyMessageContent | Media } content
      * @param { MiscMessageGenerationOptions } opts 
      * @returns { Promise<Message> }
      */
     reply(content, opts) {
-        return this.client.send(this.chat.id, content, { ...opts, quoted: this._data });
+        return new Promise(async (resolve) => {
+            resolve(await this.client.send(this._data.key.remoteJid, content, { ...opts, quoted: this._data }));
+        });
     }
 
     /**
@@ -175,7 +195,7 @@ class Message {
      */
     react(reaction) {
         return new Promise(async (resolve) => {
-            resolve(await this.client.send(this.id, { react: { text: reaction, key: this._data.key } }));
+            resolve(await this.client.send(this._data.key.remoteJid, { react: { text: reaction, key: this._data.key } }));
         });
     }
 
@@ -185,16 +205,18 @@ class Message {
      */
     delete() {
         return new Promise(async (resolve) => {
-            resolve(await this.client.send(this.id, { delete: this._data.key }));
+            resolve(await this.client.send(this._data.key.remoteJid, { delete: this._data.key }));
         });
     }
 
     /**
-     * @returns { Chat }
+     * @returns { Promise<Chat | Group> }
      */
     getChat() {
-        //const id
-        //return (remoteJid?.endsWith("@s.whatsapp.net")) ? new Chat(client, ) : new Group(client, data.key);
+        return new Promise((resolve) => {
+            const id = this._data.key.remoteJid;
+            resolve((id?.endsWith("@s.whatsapp.net")) ? new Chat(this.client, id) : new Group(this.client, this.client.socket.groupMetadata(id), id));
+        });
     }
 
     /**
@@ -203,19 +225,29 @@ class Message {
     downloadMedia() {
         if (!this.hasMedia) return;
         return new Promise(async (resolve) => {
+            const logger = P({ level: "fatal" });
+            logger.error = (obj, msg) => {
+                this.emit("error", (typeof msg === "string") ? msg : obj);
+            }
+
             const buffer = await downloadMediaMessage(this._data, "buffer", {}, {
                 logger,
                 reuploadRequest: this.client.socket.updateMediaMessage
             })
-            resolve(new Media(this.client, this.data, buffer));
+
+            const type = Object.keys(this._data.message)[0];
+            let data = this._data.message[type];
+            if (this._data.message.documentWithCaptionMessage) data = this._data.message.documentWithCaptionMessage.message.documentMessage;
+            resolve(new Media(buffer, { mimetype: data.mimetype, size: data.fileLength, text: data.caption }));
         });
     }
 
     /**
      * @returns { Message | undefined }
      */
-    getQuotedMsg() {}
+    getQuotedMsg() { }
 }
+exports.Message = Message;
 
 class Media {
     /**
@@ -245,6 +277,10 @@ class Media {
     /**
      * @type { boolean }
      */
+    isDocument;
+    /**
+     * @type { boolean }
+     */
     viewOnce;
 
     /**
@@ -259,6 +295,7 @@ class Media {
         this.isImage = Boolean(mimetype.startsWith("image"));
         this.isVideo = Boolean(mimetype.startsWith("video"));
         this.isAudio = Boolean(mimetype.startsWith("audio"));
+        this.isDocument = Boolean(mimetype.startsWith("document"));
     }
 
     /**
@@ -285,6 +322,7 @@ class Media {
         }
     }
 }
+exports.Media = Media;
 
 class User {
     /**
@@ -318,6 +356,7 @@ class User {
         });
     }
 }
+exports.User = User;
 
 class GroupUser extends User {
     /**
@@ -333,18 +372,14 @@ class GroupUser extends User {
 
     /**
      * @param { Client } client 
-     * @param { import("whatsapp-web.js").GroupChat } group 
+     * @param { Group } group 
      * @param { string } pushname 
      * @param { string } number 
      * @param { string } id 
      */
     constructor(client, group, pushname, number, id) {
-        super();
-        this.client = client;
+        super(client, pushname, number, id);
         this.group = group;
-        this.pushname = pushname;
-        this.number = number;
-        this.id = id;
     }
 
     sendDM(content, opts) {
@@ -362,6 +397,7 @@ class GroupUser extends User {
         });
     }
 }
+exports.GroupUser = GroupUser;
 
 class Chat {
     /**
@@ -376,7 +412,7 @@ class Chat {
      */
     constructor(client, id) {
         this.client = client;
-        this.id = data.remoteJid;
+        this.id = id;
     }
 
     /**
@@ -393,39 +429,24 @@ class Chat {
         return true;
     }
 }
+exports.Chat = Chat;
 
 class Group extends Chat {
+    name;
+    description;
 
     /**
      * @param { Client } client
-     * @param { proto.IWebMessageInfo["key"] } data 
+     * @param { import("@adiwajshing/baileys").GroupMetadata } data 
      */
-    constructor(client, data) {
-        super(client, data)
-    }
-
-    /**
-     * 
-     * @returns { Promise<import("@adiwajshing/baileys").GroupMetadata> }
-     */
-    getInfo() {
-        return new Promise(async (resolve) => {
-            const meta = await this.client.socket.groupMetadata(this.id);
-            resolve(meta);
-        });
+    constructor(client, data, id) {
+        super(client, id);
+        this.name = data.subject;
+        this.description = data.desc;
     }
 
     isAdmin(user) {
         return true;
     }
 }
-
-exports = {
-    Client,
-    Message,
-    Media,
-    User,
-    GroupUser,
-    Chat,
-    Group
-}
+exports.Group = Group

@@ -1,3 +1,4 @@
+const { Sticker, StickerTypes } = require("wa-sticker-formatter");
 const interruptedPrompt = require("inquirer-interrupted-prompt");
 const { createInterface } = require("readline");
 const { pluginsMenu } = require("../pluginManager/pluginsInstaller");
@@ -74,6 +75,9 @@ inquirer.registerPrompt("intr-password", interruptedPrompt.from(PasswordPrompt))
 class Menu {
     title;
     type;
+    /**
+     * @type { (Choice | inquirer.Separator)[] }
+     */
     choices;
     originalLength;
     itrCallback;
@@ -86,7 +90,70 @@ class Menu {
         this.itrCallback = itrCallback;
     }
 
-    show() {
+    /**
+     * 
+     * @param { boolean } clear
+     * @returns { Promise<number> }
+     */
+    show(clear) {
+        if (clear) logo();
+        if (!client.terminal) return new Promise(async (resolve) => {
+            try {
+                console.log("=".repeat(25).green);
+                console.log("Select an option".magenta);
+                console.log("=".repeat(25).green);
+
+                const noSeparators = this.choices.filter(c => {
+                    if (c instanceof inquirer.Separator) return false;
+                    return true;
+                });
+
+                let i = 1;
+
+                for (let choice of this.choices) {
+                    if (choice instanceof inquirer.Separator) {
+                        console.log(choice.line);
+                        continue;
+                    }
+                    console.log(`${i}) ${choice.name}`);
+                    i++;
+                }
+
+                const line = createInterface({
+                    input: process.stdin,
+                    output: process.stdout
+                });
+
+                line.question("Write an option number", (output) => {
+                    console.log(this.itrCallback);
+                    if (this.itrCallback && /return|exit|back/.exec(output.trim().toLowerCase())) return this.itrCallback();
+                    const option = Number(output.trim());
+
+                    const choice = noSeparators[option - 1];
+
+                    if (!choice) {
+                        line.close();
+                        return this.show(true);
+                    }
+
+                    if (isNaN(option)) {
+                        logo("Wrong input".red);
+                        line.close();
+                        return this.show(true);
+                    }
+
+                    line.close();
+                    if (choice.cb) choice.cb(option - 1);
+                    resolve(option - 1);
+                });
+
+            } catch (e) {
+                if (e !== interruptedPrompt.EVENT_INTERRUPTED) return;
+
+                this.itrCallback();
+            }
+        });
+
         return new Promise(async (resolve) => {
             try {
                 console.log("=".repeat(25).green);
@@ -96,7 +163,8 @@ class Menu {
                 const { option } = await inquirer.prompt([
                     this.parse()
                 ]);
-                (this.choices[option - 1]).cb(option - 1);
+                const choice = this.choices[option - 1];
+                if (choice.cb) choice.cb(option - 1);
                 resolve(option - 1);
             } catch (e) {
                 if (e !== interruptedPrompt.EVENT_INTERRUPTED) return;
@@ -112,7 +180,8 @@ class Menu {
     }
 
     addSeparator(text) {
-        this.choices.push(new inquirer.Separator(text));
+        if (!client.terminal) this.choices.push("───────────────");
+        else this.choices.push(new inquirer.Separator(text || "───────────────"));
         return this;
     }
 
@@ -142,6 +211,9 @@ exports.Menu = Menu;
 
 class Choice {
     name;
+    /**
+     * @type { () => void }
+     */
     cb;
 
     constructor(name, cb) {
@@ -165,8 +237,12 @@ const MainMenu = new Menu("Main Menu", "list", [
         MainMenu.show();
     }),
     new Choice("About", async () => {
-        logo("Not available yet".bgRed.cyan);
-        await GoBack.show();
+        logo([
+            `Made by: ${"RedTNT".cyan}`.yellow,
+            `Discord: ${"RedTNT#0333".cyan}`.yellow,
+            `GitHub: ${"https://github.com/RedTNT-Official".cyan}`.yellow
+        ].join("\n"));
+        await enterToContinue();
         logo();
         MainMenu.show();
     }),
@@ -181,16 +257,21 @@ exports.MainMenu = MainMenu;
 const GoBack = new Menu("Actions", "list", [new Choice("Go Back")]);
 exports.GoBack = GoBack;
 
+/**
+ * 
+ * @returns { Promise<string> }
+ */
 function enterToContinue() {
     return new Promise((resolve) => {
-        console.log("\n");
+        console.log(" \n");
         const input = createInterface({
             input: process.stdin,
             output: process.stdout
         });
-        input.question("Press enter to continue", () => {
+        console.log("Press enter to continue");
+        input.question(" ", (response) => {
             input.close();
-            resolve();
+            resolve(response.trim().toLowerCase());
         });
     });
 }
@@ -199,19 +280,18 @@ exports.enterToContinue = enterToContinue;
 function logo(extra) {
     console.clear();
     console.log([
-        " _   _           _       _    _ _           _       ",
-        "| \\ | |         | |     | |  | | |         | |      ",
-        "|  \\| | ___   __| | ___ | |  | | |__   __ _| |_ ___ ",
-        "| . ` |/ _ \\ / _` |/ _ \\| |/\\| | '_ \\ / _` | __/ __|",
-        "| |\\  | (_) | (_| |  __/\\  /\\  / | | | (_| | |_\\__ \\",
-        "\\_| \\_/\\___/ \\__,_|\\___| \\/  \\/|_| |_|\\__,_|\\__|___/",
-        ""
-    ].join("\n").red);
+        " _   _           _       _    _ _           _       ".red,
+        "| \\ | |         | |     | |  | | |         | |      ".red,
+        "|  \\| | ___   __| | ___ | |  | | |__   __ _| |_ ___ ".red,
+        "| . ` |/ _ \\ / _` |/ _ \\| |/\\| | '_ \\ / _` | __/ __|".red,
+        "| |\\  | (_) | (_| |  __/\\  /\\  / | | | (_| | |_\\__ \\".red,
+        "\\_| \\_/\\___/ \\__,_|\\___| \\/  \\/|_| |_|\\__,_|\\__|___/".red,
+        " "
+    ].join("\n"));
 
     if (extra) console.log(extra);
 }
 exports.logo = logo;
 
-const { Sticker, StickerTypes } = require("wa-sticker-formatter");
 exports.Sticker = Sticker;
 exports.StickerTypes = StickerTypes;

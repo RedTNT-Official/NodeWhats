@@ -18,7 +18,8 @@ client.on("open", async () => {
     Spinner.stop();
     await loadCommands();
     await loadPlugins();
-    await enterToContinue();
+    const response = await enterToContinue();
+    if (response === "noterminal") client.terminal = false;
     logo("Client ready!".green);
     MainMenu.show();
 });

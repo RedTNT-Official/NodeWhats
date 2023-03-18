@@ -1,5 +1,4 @@
 import { Client, Message, User } from "./socket";
-
 export { Sticker, StickerTypes } from "wa-sticker-formatter";
 
 export const prefix = ".";
@@ -9,7 +8,7 @@ export const client: Client;
 export const MainMenu: Menu;
 export const GoBack: Menu;
 
-export function enterToContinue(): Promise<void>;
+export function enterToContinue(): Promise<string>;
 export function logo(extra?: string): void;
 
 export class Command {

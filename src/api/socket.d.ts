@@ -1,10 +1,10 @@
 import { AnyMessageContent, GroupMetadata, MiscMessageGenerationOptions, SocketConfig, WABusinessProfile } from "@adiwajshing/baileys/lib/Types";
 import EventEmitter from "events";
-import { GroupChat } from "whatsapp-web.js";
 
 export class Client extends EventEmitter {
     readonly opened: boolean;
     opts?: ClientOptions;
+    terminal: boolean;
 
     constructor(options?: ClientOptions);
 
@@ -34,7 +34,7 @@ export class GroupUser extends User {
     readonly countryCode: string;
     readonly id: string;
     readonly isAdmin: boolean;
-    readonly group: GroupChat;
+    readonly group: Group;
 
     sendDM(content: Message | Media, opts: MiscMessageGenerationOptions): Promise<void>;
 
@@ -69,6 +69,7 @@ export class Media {
     isImage: boolean;
     isVideo: boolean;
     isAudio: boolean;
+    isDocument: boolean;
     viewOnce: boolean;
 
     private constructor();
@@ -95,7 +96,6 @@ export class Group extends Chat {
 
 interface ClientOptions {
     id?: string;
-    autoPrintQr?: boolean;
     shouldReconnect?: boolean;
     baileysOpts?: Partial<SocketConfig>;
 }
