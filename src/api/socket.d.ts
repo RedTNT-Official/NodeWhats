@@ -32,12 +32,11 @@ export class User {
 }
 
 export class GroupUser extends User {
-    readonly pushname?: string;
-    readonly number: string;
     readonly countryCode: string;
-    readonly id: string;
+    readonly pushname?: string;
     readonly isAdmin: boolean;
-    readonly group: Group;
+    readonly number: string;
+    readonly id: string;
 
     sendDM(content: Message | Media, opts: MiscMessageGenerationOptions): Promise<void>;
 
@@ -47,9 +46,9 @@ export class GroupUser extends User {
 
 export class Message {
     readonly author: User;
+    readonly fromMe: boolean;
     readonly content: string;
     readonly isReply: boolean;
-    readonly fromMe: boolean;
     readonly hasMedia: boolean;
 
     private constructor();

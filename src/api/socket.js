@@ -178,7 +178,7 @@ class Message {
         this.client = client;
         this._data = data;
         this.author = (remoteJid?.endsWith("@s.whatsapp.net")) ?
-            new User(client, pushName || verifiedBizName || "", remoteJid.split("@")[0], remoteJid) : new GroupUser(client, remoteJid, pushName || "", participant.split("@")[0], participant);
+            new User(client, pushName || verifiedBizName || "", remoteJid.split("@")[0], remoteJid) : new GroupUser(client, remoteJid, pushName || verifiedBizName || "", participant.split("@")[0], participant);
         this.fromMe = fromMe;
         this.isReply = !!message[Object.keys(message)[0]]?.contextInfo;
         const type = Object.keys(data.message)[0];
