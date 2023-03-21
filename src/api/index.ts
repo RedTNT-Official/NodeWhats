@@ -1,48 +1,44 @@
-const { Sticker, StickerTypes } = require("wa-sticker-formatter");
-const interruptedPrompt = require("inquirer-interrupted-prompt");
-const { createInterface } = require("readline");
-const { pluginsMenu } = require("../pluginManager/pluginsInstaller");
-const PasswordPrompt = require("inquirer/lib/prompts/password");
-const InputPrompt = require("inquirer/lib/prompts/input");
-const ListPrompt = require("inquirer/lib/prompts/list");
-const { Client } = require("./socket");
-const inquirer = require("inquirer");
-require("colors");
+import { Client, Message, User } from "./socket";
+// @ts-ignore
+import interruptedPrompt from "inquirer-interrupted-prompt";
+import { createInterface } from "readline";
+import { pluginsMenu } from "../pluginManager/pluginsInstaller";
+import PasswordPrompt from "inquirer/lib/prompts/password";
+import InputPrompt from "inquirer/lib/prompts/input";
+import ListPrompt from "inquirer/lib/prompts/list";
+import inquirer from "inquirer";
+import "colors";
 
-const prefix = ".";
-exports.prefix = prefix;
+export const prefix = ".";
+export const CommandRegistry = new Map<string, Command>();
 
-const CommandRegistry = new Map();
-exports.CommandRegistry = CommandRegistry;
-
-const client = new Client({
+export const client = new Client({
     shouldReconnect: true
 });
-exports.client = client;
 
 client.on("error", (err) => {
     console.error(err.red);
 });
 
-class Command {
-    name;
-    description;
-    admin;
-    cb;
+export class Command {
+    name: string;
+    description: string;
+    admin: boolean;
+    cb: (user: User, message: Message, args: string[]) => void;
 
-    constructor(name, description, cb, permissions) {
+    constructor(name: string, description: string, cb: Command["cb"], permissions: CommandPermissionLevel) {
         this.name = name;
         this.description = description;
         this.cb = cb;
         this.admin = permissions === CommandPermissionLevel.Admin;
     }
 
-    alias(name) {
+    alias(name: string) {
         CommandRegistry.set(name.toLowerCase(), this);
         return this;
     }
 
-    static register(name, description, cb, permissions = CommandPermissionLevel.Normal) {
+    static register(name: string, description: string, cb: Command["cb"], permissions = CommandPermissionLevel.Normal) {
         if (CommandRegistry.has(name.toLowerCase())) throw new Error("Command already registered");
 
         const command = new Command(name, description, cb, permissions);
@@ -50,42 +46,31 @@ class Command {
         return command;
     }
 
-    static find(name) {
+    static find(name: string) {
         return CommandRegistry.get(name);
     }
 
-    overwrite(cb) {
+    overwrite(cb: Command["cb"]) {
         this.cb = cb;
         CommandRegistry.set(this.name.toLowerCase(), this);
     };
-}
-exports.Command = Command;
-
-var CommandPermissionLevel = {
-    "Normal": 0,
-    "Admin": 1,
-    0: "Normal",
-    1: "Admin"
 }
 
 inquirer.registerPrompt("intr-list", interruptedPrompt.from(ListPrompt));
 inquirer.registerPrompt("intr-input", interruptedPrompt.from(InputPrompt));
 inquirer.registerPrompt("intr-password", interruptedPrompt.from(PasswordPrompt));
 
-class Menu {
+export class Menu {
     title;
     type;
-    /**
-     * @type { (Choice | inquirer.Separator)[] }
-     */
-    choices;
+    choices: (Choice | inquirer.Separator)[];
     originalLength;
     itrCallback;
 
-    constructor(title, type, choices = [], itrCallback) {
+    constructor(title: string, type: MenuType, choices?: Choice[], itrCallback?: any) {
         this.title = title;
         this.type = itrCallback ? `intr-${type}` : type;
-        this.choices = choices;
+        this.choices = choices || [];
         this.originalLength = choices?.length || 0;
         this.itrCallback = itrCallback;
     }
@@ -95,7 +80,7 @@ class Menu {
      * @param { boolean } clear
      * @returns { Promise<number> }
      */
-    show(clear) {
+    show(clear?: boolean): Promise<number> {
         if (clear) logo();
         if (!client.terminal) return new Promise(async (resolve) => {
             try {
@@ -128,7 +113,7 @@ class Menu {
                     if (this.itrCallback && /return|exit|back/.exec(output.trim().toLowerCase())) return this.itrCallback();
                     const option = Number(output.trim());
 
-                    const choice = noSeparators[option - 1];
+                    const choice = noSeparators[option - 1] as Choice;
 
                     if (!choice) {
                         line.close();
@@ -162,7 +147,8 @@ class Menu {
                 const { option } = await inquirer.prompt([
                     this.parse()
                 ]);
-                const choice = this.choices[option - 1];
+                const choice = this.choices[option - 1] as Choice;
+
                 if (choice.cb) choice.cb(option - 1);
                 resolve(option - 1);
             } catch (e) {
@@ -173,12 +159,12 @@ class Menu {
         });
     }
 
-    addChoice(choice) {
+    addChoice(choice: Choice) {
         this.choices.push(choice);
         return this;
     }
 
-    addSeparator(text) {
+    addSeparator(text?: string) {
         this.choices.push(new inquirer.Separator(text || "───────────────"));
         return this;
     }
@@ -205,28 +191,23 @@ class Menu {
         }
     }
 }
-exports.Menu = Menu;
 
-class Choice {
-    name;
-    /**
-     * @type { () => void }
-     */
-    cb;
+export class Choice {
+    name: string;
+    cb: (option: number) => void;
 
-    constructor(name, cb) {
+    constructor(name: string, cb?: Choice["cb"]) {
         this.name = name;
         this.cb = cb || (() => { });
     }
 }
-exports.Choice = Choice;
 
-const MainMenu = new Menu("Main Menu", "list", [
+export const MainMenu = new Menu("Main Menu", "list", [
     new Choice("Search Plugins", () => {
         pluginsMenu();
     }),
     new Choice("Reload Plugins", async () => {
-        const { loadCommands, reloadPlugins } = require("../Utils");
+        const { loadCommands, reloadPlugins } = await import("../Utils");
         logo();
         await loadCommands();
         await reloadPlugins();
@@ -250,32 +231,24 @@ const MainMenu = new Menu("Main Menu", "list", [
         process.exit();
     })
 ]);
-exports.MainMenu = MainMenu;
 
-const GoBack = new Menu("Actions", "list", [new Choice("Go Back")]);
-exports.GoBack = GoBack;
+export const GoBack = new Menu("Actions", "list", [new Choice("Go Back")]);
 
-/**
- * 
- * @returns { Promise<string> }
- */
-function enterToContinue() {
+export function enterToContinue(): Promise<string> {
     return new Promise((resolve) => {
-        console.log(" \n");
         const input = createInterface({
             input: process.stdin,
             output: process.stdout
         });
-        console.log("Press enter to continue");
-        input.question(" ", (response) => {
+        console.log("\nPress enter to continue");
+        input.question("\n", (response) => {
             input.close();
             resolve(response.trim().toLowerCase());
         });
     });
 }
-exports.enterToContinue = enterToContinue;
 
-function logo(extra) {
+export function logo(extra?: string) {
     console.clear();
     console.log([
         " _   _           _       _    _ _           _       ".red,
@@ -289,7 +262,12 @@ function logo(extra) {
 
     if (extra) console.log(extra);
 }
-exports.logo = logo;
 
-exports.Sticker = Sticker;
-exports.StickerTypes = StickerTypes;
+export { Sticker, StickerTypes } from "wa-sticker-formatter";
+
+type MenuType = string;
+
+export enum CommandPermissionLevel {
+    Normal,
+    Admin
+}

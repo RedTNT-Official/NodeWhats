@@ -16,7 +16,12 @@ async function main(name: string) {
         name: `@redtnt/${name.replace(/ +/g, "-").toLowerCase()}`,
         version: "1.0.0",
         description: "",
-        main: "index.ts",
+        main: "index.js",
+        scripts: {
+            build: "tsc",
+            start: "npm run build && node src/index.js",
+            prepare: "tsc || exit 0",
+        },
         keywords: [],
         author: "",
         license: "ISC",
@@ -25,14 +30,14 @@ async function main(name: string) {
             "bot": "file:../../src/api"
         },
         devDependencies: {
-          "@types/node": "^18.14.0"
+            "@types/node": "^18.14.0"
         }
     }
 
     await mkdir(path);
     await writeFile(join(path, "package.json"), JSON.stringify(packageJson, null, 2));
     await writeFile(join(path, "index.ts"),
-`import { client } from "bot";
+        `import { client } from "bot";
 
 console.log("[${name}-plugin] Allocated".blue);
 

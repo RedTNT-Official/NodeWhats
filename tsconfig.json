@@ -1,15 +1,13 @@
 {
-  "ts-node": {
-    "skipIgnore": true
-  },
   "compilerOptions": {
     "target": "es2017",
     "lib": [
       "es2017"
     ],
-    "esModuleInterop": true,
     "module": "CommonJS",
-    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "moduleResolution": "Node",
     "alwaysStrict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -17,6 +15,7 @@
     "resolveJsonModule": true,
     "inlineSourceMap": true,
     "importHelpers": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "declaration": true
   }
 }

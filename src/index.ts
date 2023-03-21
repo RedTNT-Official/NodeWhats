@@ -1,27 +1,14 @@
-import { loadCommands, loadListeners, loadPlugins } from "./Utils";
-import { client, enterToContinue, logo, MainMenu } from "bot";
-import Spinner from "./loading";
-import "colors";
+import { exec } from "child_process";
 
-Spinner.setSequence(['|'.cyan, '/'.cyan, '—'.cyan, '\\'.cyan]);
-Spinner.start(400, {
-    hideCursor: true,
-    clearChar: true,
-    clearLine: true,
-    doNotBlock: false
-});
+(async () => {
+    await npmInstall(__dirname);
+    import("./app");
+})();
 
-logo();
-loadListeners();
-
-client.on("open", async () => {
-    Spinner.stop();
-    await loadCommands();
-    await loadPlugins();
-    const response = await enterToContinue();
-    if (response === "noterminal") client.terminal = false;
-    logo("Client ready!".green);
-    MainMenu.show();
-});
-
-client.start();
+export function npmInstall(path: string): Promise<void> {
+    return new Promise((resolve) => {
+        exec(`cd ${path} && npm i`, async () => {
+            resolve();
+        });
+    });
+}

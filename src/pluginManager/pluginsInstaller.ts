@@ -48,7 +48,8 @@ export async function pluginsMenu() {
             console.log(`Removing ${plugin.name}`.yellow);
             await plugin.uninstall();
             logo(`${plugin.name} removed`.green);
-            GoBack.show();
+            await enterToContinue();
+            pluginsMenu();
         })
     ]), () => {
         logo();

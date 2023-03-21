@@ -1,10 +1,11 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "fs";
 import { client, CommandRegistry, GoBack, MainMenu } from "bot";
+import { npmInstall } from "./index";
 import { exec } from "child_process";
 import { join } from "path";
 
 const pluginsPath = join(__dirname, "..", "plugins");
-const mainJsonPath = join(process.cwd(), "package.json");
+const mainJsonPath = join(__dirname, "..", "package.json");
 
 if (!existsSync(pluginsPath)) mkdirSync(pluginsPath);
 
@@ -23,7 +24,7 @@ class Plugin {
 
     uninstall(): Promise<void> {
         return new Promise((resolve, reject) => {
-            exec(`npm r ${this.fullname}`, (err, out) => {
+            exec(`cd ${join(__dirname, "..")} && npm r ${this.fullname}`, (err, out) => {
                 if (err) return reject(err);
 
                 resolve();
@@ -88,15 +89,20 @@ export class LocalPlugin extends Plugin {
         return Boolean(mainPackJson().dependencies[this.fullname]);
     }
 
+    install() {
+        const json = mainPackJson();
+        json.dependencies[this.fullname] = `file:plugins/${this.dirname}`;
+        writeFileSync(mainJsonPath, JSON.stringify(json, null, 2));
+    }
+
     load(): Promise<void> {
-        return new Promise((resolve) => {
+        return new Promise(async (resolve) => {
             try {
-                exec(`cd ../plugins/${this.dirname} && npm i`, async () => {
-                    await import(`../plugins/${this.dirname}`);
-                    resolve();
-                });
+                await import(this.fullname);
+                resolve();
             } catch (e) {
-                console.log(e);
+                console.error(e);
+                resolve();
             }
         });
     }
@@ -104,7 +110,7 @@ export class LocalPlugin extends Plugin {
     unload() {
         try {
             execOnDirFiles(join(pluginsPath, this.dirname), (file, path) => {
-                if (!file.endsWith(".ts")) return;
+                if (!file.endsWith(".js")) return;
 
                 delete require.cache[path];
             });
@@ -147,7 +153,7 @@ export async function loadPlugins() {
             try {
                 await import(plugin.fullname);
             } catch (e) {
-                throw e
+                console.error(e);
             }
         }
         console.log("\n");
@@ -161,9 +167,15 @@ export async function loadPlugins() {
         console.log("=".repeat(30).magenta);
 
         for (const plugin of local) {
+            if (!plugin.installed) {
+                console.log(`[NodeWhats] ${plugin.name}: installing`.green);
+                plugin.install();
+                await npmInstall(join(__dirname, ".."));
+            }
             plugin.unload();
-            console.log(`Loading ${plugin.name}`.green);
+            await npmInstall(join(pluginsPath, plugin.dirname));
             await plugin.load();
+            console.log(`[NodeWhats] ${plugin.name}: loaded`.green);
         }
     }
 
@@ -171,7 +183,7 @@ export async function loadPlugins() {
 }
 
 export async function loadListeners() {
-    const listeners = readdirSync(join(__dirname, "listeners")).filter(f => f.endsWith(".ts"));
+    const listeners = readdirSync(join(__dirname, "listeners")).filter(f => f.endsWith(".js"));
 
     for (const listener of listeners) {
         try {
@@ -187,13 +199,13 @@ export async function reloadPlugins() {
     client.removeAllListeners();
     MainMenu.resetChoices();
     GoBack.resetChoices();
-    loadListeners();
-    loadPlugins();
+    await loadListeners();
+    await loadPlugins();
 }
 
 export async function loadCommands() {
     CommandRegistry.clear();
-    const commands = readdirSync(join(__dirname, "commands")).filter(f => f.endsWith(".ts"));
+    const commands = readdirSync(join(__dirname, "commands")).filter(f => f.endsWith(".js"));
 
     for (const command of commands) {
         try {

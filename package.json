@@ -2,10 +2,12 @@
   "name": "@redtnt/nodewhats",
   "version": "1.0.0",
   "description": "",
-  "main": "src/index.ts",
+  "main": "src/app.js",
   "scripts": {
-    "start": "ts-node src/index",
-    "newplugin": "ts-node src/pluginManager/newPlugin"
+    "build": "tsc",
+    "start": "npm run build && node src/index.js",
+    "prepare": "tsc || exit 0",
+    "newplugin": "node src/pluginManager/newPlugin"
   },
   "keywords": [],
   "author": "RedTNT",
@@ -29,8 +31,7 @@
     "inquirer-interrupted-prompt": "^2.0.1",
     "pino": "^8.11.0",
     "qrcode-terminal": "0.12.0",
-    "ts-node": "^10.9.1",
-    "tslib": "2.5.0",
+    "typescript": "^5.0.2",
     "wa-sticker-formatter": "^4.4.4"
   },
   "devDependencies": {
