@@ -1,7 +1,0 @@
-/node_modules
-/auth_info
-/.vscode
-/plugins/**
-!/plugins/*.md
-*.ts
-!*.d.ts

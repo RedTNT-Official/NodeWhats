@@ -15,11 +15,10 @@ async function main(name: string) {
     const packageJson = {
         name: `@redtnt/${name.replace(/ +/g, "-").toLowerCase()}`,
         version: "1.0.0",
-        description: "",
+        description: `The ${name} plugin!`,
         main: "index.js",
         scripts: {
             build: "tsc",
-            start: "npm run build && node src/index.js",
             prepare: "tsc || exit 0",
         },
         keywords: [],
@@ -37,7 +36,7 @@ async function main(name: string) {
     await mkdir(path);
     await writeFile(join(path, "package.json"), JSON.stringify(packageJson, null, 2));
     await writeFile(join(path, "index.ts"),
-        `import { client } from "bot";
+`import { client } from "bot";
 
 console.log("[${name}-plugin] Allocated".blue);
 
@@ -46,6 +45,32 @@ client.on("message", (msg) => {
 
     console.log(\`Message recieved from \${msg.author.pushname}\`.yellow);
 });`);
+    await writeFile(join(path, ".npmignore"),
+`/node_modules
+/.vscode
+*.ts
+!*.d.ts`);
+    await writeFile(join(path, "tsconfig.json"), JSON.stringify({
+        "compilerOptions": {
+            "target": "es2017",
+            "lib": [
+                "es2017"
+            ],
+            "module": "CommonJS",
+            "skipLibCheck": true,
+            "esModuleInterop": true,
+            "moduleResolution": "Node",
+            "alwaysStrict": true,
+            "noImplicitAny": true,
+            "strictNullChecks": true,
+            "noImplicitThis": true,
+            "resolveJsonModule": true,
+            "inlineSourceMap": true,
+            "importHelpers": true,
+            "experimentalDecorators": true,
+            "declaration": true
+        }
+    }))
 
     exec(`cd plugins/${name} && npm install`);
 }

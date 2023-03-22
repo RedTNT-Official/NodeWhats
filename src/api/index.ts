@@ -75,11 +75,6 @@ export class Menu {
         this.itrCallback = itrCallback;
     }
 
-    /**
-     * 
-     * @param { boolean } clear
-     * @returns { Promise<number> }
-     */
     show(clear?: boolean): Promise<number> {
         if (clear) logo();
         if (!client.terminal) return new Promise(async (resolve) => {

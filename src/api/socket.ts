@@ -129,6 +129,7 @@ export class Client extends EventEmitter {
 
 export class Message {
     protected _data: proto.IWebMessageInfo;
+    id: string;
     client: Client;
     author: User;
     content: string;
@@ -137,9 +138,10 @@ export class Message {
     hasMedia: boolean;
 
     constructor(client: Client, data: proto.IWebMessageInfo) {
-        const { message, pushName, key: { remoteJid, participant, fromMe }, verifiedBizName } = data;
+        const { message, pushName, key: { remoteJid, participant, fromMe, id }, verifiedBizName } = data;
         this.client = client;
         this._data = data;
+        this.id = id!;
         this.author = (remoteJid?.endsWith("@s.whatsapp.net")) ?
             new User(client, pushName || verifiedBizName || "", remoteJid.split("@")[0], remoteJid) : new GroupUser(client, remoteJid!, pushName || verifiedBizName || "", participant?.split("@")[0]!, participant!);
         this.fromMe = fromMe!;
