@@ -27,7 +27,7 @@ export class Client extends EventEmitter {
             this.state = state;
             this.saveCreds = saveCreds;
 
-            const logger = P({ level: "fatal" });
+            const logger = P({ level: "silent" });
             //logger.error = (obj: any, msg: any) => {
             //    this.emit("error", (typeof msg === "string") ? msg : obj);
             //}

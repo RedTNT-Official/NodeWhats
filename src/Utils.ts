@@ -1,6 +1,5 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "fs";
 import { client, CommandRegistry, GoBack, MainMenu } from "bot";
-import { npmInstall } from "./index";
 import { exec } from "child_process";
 import { join } from "path";
 
@@ -51,6 +50,18 @@ export class NpmPlugin extends Plugin {
                 resolve();
             });
         });
+    }
+
+    unload() {
+        try {
+            execOnDirFiles(join(__dirname, "..", "node_modules", this.fullname), (file, path) => {
+                if (!file.endsWith(".js")) return;
+
+                delete require.cache[path];
+            });
+        } catch (e) {
+            console.log(e);
+        }
     }
 
     static search(): Promise<NpmPlugin[]> {
@@ -151,6 +162,7 @@ export async function loadPlugins() {
         for (const plugin of npm) {
             console.log(`Loading ${plugin.name}`.green);
             try {
+                plugin.unload();
                 await import(plugin.fullname);
             } catch (e) {
                 console.error(e);
@@ -226,6 +238,14 @@ function execOnDirFiles(path: string, cb: (fileName: string, filePath: string) =
         if (statSync(filePath).isDirectory()) return execOnDirFiles(filePath, cb);
 
         cb(file, filePath);
+    });
+}
+
+export function npmInstall(path: string): Promise<void> {
+    return new Promise((resolve) => {
+        exec(`cd ${path} && npm i`, async () => {
+            resolve();
+        });
     });
 }
 
