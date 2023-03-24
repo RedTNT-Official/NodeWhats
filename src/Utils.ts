@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "fs";
 import { client, CommandRegistry, GoBack, MainMenu } from "bot";
 import { exec } from "child_process";
 import { join } from "path";
@@ -33,18 +33,29 @@ class Plugin {
 }
 
 export class NpmPlugin extends Plugin {
+    data: PackageInfoJson;
 
     constructor(packJson: PackageInfoJson) {
         super(packJson);
+        this.data = packJson;
     }
 
     get installed(): boolean {
         return Boolean(mainPackJson().dependencies[this.fullname]);
     }
 
-    install(): Promise<void> {
+    getVersions(): Promise<string[]> {
+        return new Promise((resolve) => {
+            exec(`npm view ${this.fullname} versions --json`, (err, out) => {
+                const parsed: string | string[] = JSON.parse(out);
+                resolve((typeof parsed === "string") ? [parsed] : parsed);
+            });
+        });
+    }
+
+    install(version?: string): Promise<void> {
         return new Promise((resolve, reject) => {
-            exec(`npm i ${this.fullname}`, (err, out) => {
+            exec(`npm i ${this.fullname}${version ? `@${version}` : ""}`, (err, out) => {
                 if (err) return reject(err);
 
                 resolve();
@@ -76,11 +87,15 @@ export class NpmPlugin extends Plugin {
     }
 
     static getInstalled(): NpmPlugin[] {
-        const dependencies: Record<string, string> = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf-8")).dependencies;
+        const dependencies: Record<string, string> = mainPackJson().dependencies;
 
-        return Object.entries(dependencies).filter((v) => v[0].startsWith("@redtnt")).map((v) => {
-            const path = join(process.cwd(), "node_modules", v[0], "package.json");
+        return Object.entries(dependencies).filter((v) => {
+            const path = join(__dirname, "..", "node_modules", v[0]);
+            return v[0].startsWith("@redtnt") && existsSync(path) && !lstatSync(path).isSymbolicLink()
+        }).map((v) => {
+            const path = join(__dirname, "..", "node_modules", v[0], "package.json");
             const packJson = JSON.parse(readFileSync(path, "utf-8"));
+            console.log(path);
             return new NpmPlugin(packJson);
         });
     }

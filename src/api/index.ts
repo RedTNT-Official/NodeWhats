@@ -83,6 +83,8 @@ export class Menu {
                 console.log("Write an option number".magenta);
                 console.log("=".repeat(25).green);
 
+                console.log(`${"?".green} ${this.title}`);
+
                 const noSeparators = this.choices.filter(c => {
                     if (c instanceof inquirer.Separator) return false;
                     return true;
@@ -171,6 +173,7 @@ export class Menu {
     parse() {
         return {
             type: this.type,
+            pageSize: this.choices.length,
             name: "option",
             message: this.title,
             choices: [
