@@ -146,7 +146,7 @@ export class Message {
             new User(client, pushName || verifiedBizName || "", remoteJid.split("@")[0], remoteJid) : new GroupUser(client, remoteJid!, pushName || verifiedBizName || "", participant?.split("@")[0]!, participant!);
         this.fromMe = fromMe!;
         // @ts-ignore
-        this.isReply = !!message![Object.keys(message!)[0] as keyof proto.IMessage]?.contextInfo;
+        this.isReply = !!(message![Object.keys(message!)[0] as keyof proto.IMessage]?.contextInfo as proto.ContextInfo).quotedMessage;
         const type = Object.keys(data.message!)[0];
         // @ts-ignore
         this.content = message?.conversation || message?.extendedTextMessage?.text || message![type]?.caption || "";
