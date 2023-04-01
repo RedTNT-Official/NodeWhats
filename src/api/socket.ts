@@ -28,9 +28,9 @@ export class Client extends EventEmitter {
             this.saveCreds = saveCreds;
 
             const logger = P({ level: "silent" });
-            //logger.error = (obj: any, msg: any) => {
-            //    this.emit("error", (typeof msg === "string") ? msg : obj);
-            //}
+            logger.error = (_obj: any, msg: any) => {
+                this.emit("error", msg);
+            }
 
             const socket = makeWASocket({
                 ...this.opts?.baileysOpts,
@@ -76,8 +76,12 @@ export class Client extends EventEmitter {
 
     getProfilePicUrl(id: string): Promise<string | undefined> {
         return new Promise(async (resolve) => {
-            const url = await this.socket.profilePictureUrl(id, "image");
-            resolve(url);
+            try {
+                const url = await this.socket.profilePictureUrl(id, "image");
+                resolve(url);
+            } catch (e) {
+                resolve(undefined);
+            }
         });
     }
 
@@ -96,7 +100,7 @@ export class Client extends EventEmitter {
             if (connection === "close") {
                 this.opened = false;
                 this.emit("close", lastDisconnect);
-                
+
                 const error = (lastDisconnect?.error as Boom);
                 if (error?.output.statusCode !== DisconnectReason.loggedOut && this.opts?.shouldReconnect) this.start();
             }
@@ -127,6 +131,11 @@ export class Client extends EventEmitter {
     }
 }
 
+export declare interface Client {
+    on<T extends keyof ClientEvents>(event: T, cb: (args: ClientEvents[T]) => void): this;
+    emit<T extends keyof ClientEvents>(event: T, args: ClientEvents[T]): boolean;
+}
+
 export class Message {
     protected _data: proto.IWebMessageInfo;
     id: string;
@@ -139,6 +148,7 @@ export class Message {
 
     constructor(client: Client, data: proto.IWebMessageInfo) {
         const { message, pushName, key: { remoteJid, participant, fromMe, id }, verifiedBizName } = data;
+
         this.client = client;
         this._data = data;
         this.id = id!;
@@ -154,7 +164,7 @@ export class Message {
         if (message?.documentWithCaptionMessage) this.content = message.documentWithCaptionMessage.message?.documentMessage?.caption!;
     }
 
-    
+
     reply(content: string | Media | AnyMessageContent, opts?: MiscMessageGenerationOptions): Promise<Message> {
         return new Promise(async (resolve) => {
             resolve(await this.client.send(this._data.key.remoteJid!, content, { ...opts, quoted: this._data }));
@@ -175,19 +185,13 @@ export class Message {
         });
     }
 
-    /**
-     * @returns { Promise<Chat | Group> }
-     */
-    getChat(): Promise<Chat | Group> {
+    getChat(): Promise<Chat> {
         return new Promise(async (resolve) => {
             const id = this._data.key.remoteJid;
             resolve((id?.endsWith("@s.whatsapp.net")) ? new Chat(this.client, id) : new Group(this.client, await this.client.socket.groupMetadata(id!), id!));
         });
     }
 
-    /**
-     * @returns { Promise<Media> | undefined }
-     */
     downloadMedia(): Promise<Media> | undefined {
         if (!this.hasMedia) return;
         return new Promise(async (resolve) => {
@@ -224,6 +228,22 @@ export class Message {
             message: ctx.quotedMessage
         })
     }
+
+    getMentions(): Promise<User[]> {
+        return new Promise(async (resolve) => {
+            const mentionedJid = this._data.message?.extendedTextMessage?.contextInfo?.mentionedJid;
+            const mentioned: User[] = [];
+
+            if (mentionedJid) for (const jid of mentionedJid) {
+                if (this._data.key.remoteJid?.endsWith("@s.whatsapp.net"))
+                    mentioned.push(new User(this.client, undefined, jid.split("@")[0], jid));
+    
+                mentioned.push(new GroupUser(this.client, this._data.key.remoteJid!, undefined, jid?.split("@")[0]!, jid!));
+            }
+
+            resolve(mentioned);
+        });
+    }
 }
 
 export class Media {
@@ -251,10 +271,10 @@ export class Media {
     }
 
     static create(path: string, opts: {
-            mimetype: "image" | "video" | "gif" | "sticker";
-            text?: string;
-            viewOnce?: boolean;
-        }): Media {
+        mimetype: "image" | "video" | "gif" | "sticker";
+        text?: string;
+        viewOnce?: boolean;
+    }): Media {
         const realPath = require.resolve(path);
 
         try {
@@ -276,12 +296,12 @@ export class Media {
 
 export class User {
     client: Client;
-    pushname: string;
+    pushname?: string;
     number: string;
     countryCode: string;
     id: string;
 
-    constructor(client: Client, pushname: string, number: string, id: string) {
+    constructor(client: Client, pushname: string = "", number: string, id: string) {
         this.client = client;
         this.pushname = pushname;
         this.number = number;
@@ -315,21 +335,14 @@ export class GroupUser extends User {
      * @type { Client }
      */
     client: Client;
-    pushname: string;
+    pushname?: string;
     number;
     countryCode: string;
     id;
     isAdmin: boolean;
     groupId: string;
 
-    /**
-     * @param { Client } client
-     * @param { string } groupId
-     * @param { string } pushname
-     * @param { string } number
-     * @param { string } id
-     */
-    constructor(client: Client, groupId: string, pushname: string, number: string, id: string) {
+    constructor(client: Client, groupId: string, pushname: string = "", number: string, id: string) {
         super(client, pushname, number, id);
         this.groupId = groupId;
         this.client = client;
@@ -384,22 +397,26 @@ export class Chat {
     }
 
     isGroup(): this is Group {
-        return false;
+        return this.id.endsWith("@g.us");
     }
 }
 
 export class Group extends Chat {
+    protected _data: GroupMetadata;
     name;
     description;
 
     constructor(client: Client, data: GroupMetadata, id: string) {
         super(client, id);
+        this._data = data;
         this.name = data.subject;
         this.description = data.desc;
     }
 
     isAdmin(user: User) {
-        return true;
+        return this._data.participants.some((p) => {
+            return p.id === user.id && (p.isAdmin || p.isSuperAdmin);
+        });
     }
 }
 

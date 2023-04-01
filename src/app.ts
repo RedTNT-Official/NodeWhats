@@ -1,5 +1,6 @@
 import { loadCommands, loadListeners, loadPlugins } from "./Utils";
-import { client, enterToContinue, logo, MainMenu } from "bot";
+import { enterToContinue, logo, MainMenu } from "bot/menu";
+import { client } from "bot";
 import Spinner from "./loading";
 import "colors";
 

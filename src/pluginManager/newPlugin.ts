@@ -24,7 +24,7 @@ async function main(name: string) {
         keywords: [],
         author: "",
         license: "ISC",
-        whatsappBotPlugin: true,
+        nodewhatsPlugin: true,
         dependencies: {
             "bot": "file:../../src/api"
         },

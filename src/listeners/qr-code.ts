@@ -1,4 +1,5 @@
-import { client, logo } from "bot";
+import { client } from "bot";
+import { logo } from "bot/menu";
 import terminal from "qrcode-terminal";
 import Spinner from "../loading";
 

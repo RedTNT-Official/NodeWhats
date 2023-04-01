@@ -1,7 +1,8 @@
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "fs";
-import { client, CommandRegistry, GoBack, MainMenu } from "bot";
+import { client, CommandRegistry } from "bot";
 import { exec } from "child_process";
 import { join } from "path";
+import { GoBack, MainMenu } from "bot/menu";
 
 const pluginsPath = join(__dirname, "..", "plugins");
 const mainJsonPath = join(__dirname, "..", "package.json");
@@ -154,7 +155,7 @@ export class LocalPlugin extends Plugin {
         const directories = readdirSync(pluginsPath).filter(p => {
             const path = join(pluginsPath, p);
             const packJson = LocalPlugin.getPackage(path);
-            return statSync(path).isDirectory() && packJson && packJson.whatsappBotPlugin;
+            return statSync(path).isDirectory() && packJson && packJson.nodewhatsPlugin;
         });
 
         return directories.map((v) => new LocalPlugin(LocalPlugin.getPackage(join(pluginsPath, v))!, v));
@@ -166,6 +167,11 @@ function mainPackJson(): PackageJson {
 }
 
 export async function loadPlugins() {
+    client.removeAllListeners();
+    await loadListeners();
+    MainMenu.resetChoices();
+    GoBack.resetChoices();
+
     const npm = NpmPlugin.getInstalled();
 
     if (npm.length > 0) {
@@ -222,14 +228,6 @@ export async function loadListeners() {
     }
 }
 
-export async function reloadPlugins() {
-    client.removeAllListeners();
-    MainMenu.resetChoices();
-    GoBack.resetChoices();
-    await loadListeners();
-    await loadPlugins();
-}
-
 export async function loadCommands() {
     CommandRegistry.clear();
     const commands = readdirSync(join(__dirname, "commands")).filter(f => f.endsWith(".js"));
@@ -244,7 +242,12 @@ export async function loadCommands() {
     }
 }
 
-function execOnDirFiles(path: string, cb: (fileName: string, filePath: string) => void) {
+/**
+ * Execute a function in every file of the specified directory and subdirectories
+ * @param path Initial directory path
+ * @param cb Callback to execute in every file
+ */
+export function execOnDirFiles(path: string, cb: (fileName: string, filePath: string) => void) {
     const files = readdirSync(path).filter(f => f !== "node_modules");
 
     files.forEach((file) => {
@@ -294,7 +297,7 @@ interface PackageJson {
     description: string;
     main: string;
     scripts: Record<string, string>;
-    whatsappBotPlugin?: boolean;
+    nodewhatsPlugin?: boolean;
     keywords: string[];
     author: string;
     licence: string;

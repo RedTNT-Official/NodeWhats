@@ -1,9 +1,9 @@
-import { Choice, enterToContinue, GoBack, logo, MainMenu, Menu } from "bot";
-import { spinnerConfig } from "../app";
-import { NpmPlugin } from "../Utils";
-import Spinner from "../loading";
+import { Choice, enterToContinue, GoBack, logo, MainMenu, Menu } from ".";
+import { spinnerConfig } from "../../app";
+import { NpmPlugin } from "../../Utils";
+import Spinner from "../../loading";
 
-export async function pluginsMenu() {
+export async function PluginMenu() {
     logo("Searching plugins...".cyan);
     Spinner.start(400, spinnerConfig);
     const availablePlugins = await NpmPlugin.search();
@@ -24,7 +24,7 @@ export async function pluginsMenu() {
             await plugin.install();
             logo(`${plugin.name} installed`.green);
             await GoBack.show();
-            pluginsMenu();
+            PluginMenu();
         }),
         new Choice("See Description", async () => {
             console.log(plugin.description?.cyan || "No description".red);
@@ -45,18 +45,18 @@ export async function pluginsMenu() {
             if (!actual) {
                 console.log("The plugin is installed locally. Please update it manually".red);
                 await enterToContinue();
-                return pluginsMenu();
+                return PluginMenu();
             }
             if (actual === last) {
                 logo("The plugin is up-to-date".green);
                 await enterToContinue();
-                pluginsMenu();
+                PluginMenu();
             } else {
                 new Menu(`${plugin.name} versions`.yellow, "list", versions.map((v) => {
                     return new Choice(v, async () => {
                         await plugin.install(v);
                         await enterToContinue();
-                        pluginsMenu();
+                        PluginMenu();
                     });
                 })).show();
             }
@@ -66,9 +66,9 @@ export async function pluginsMenu() {
             await plugin.uninstall();
             logo(`${plugin.name} removed`.green);
             await enterToContinue();
-            pluginsMenu();
+            PluginMenu();
         })
     ]), () => {
-        pluginsMenu();
+        PluginMenu();
     }).show(true);
 }
