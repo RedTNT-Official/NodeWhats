@@ -39,10 +39,8 @@ export class Client extends EventEmitter {
                 browser: Browsers.appropriate("Desktop"),
                 getMessage: async (key) => {
                     const { id } = key;
-                    console.log('Resending', id);
                     return tempStore[id!]?.message!;
                 }
-                //syncFullHistory: true
             });
 
             this.socket = socket;

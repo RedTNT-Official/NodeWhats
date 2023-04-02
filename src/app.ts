@@ -21,6 +21,7 @@ client.on("open", async () => {
     Spinner.stop();
     await loadCommands();
     await loadPlugins();
+    require("./script");
     const response = await enterToContinue();
     if (response === "noterminal") client.terminal = false;
     logo("Client ready!".green);
