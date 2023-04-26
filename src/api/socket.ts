@@ -1,15 +1,13 @@
-import makeWASocket, { useMultiFileAuthState, proto, MiscMessageGenerationOptions, Browsers, downloadMediaMessage, DisconnectReason, BaileysEventMap, AnyMessageContent, WABusinessProfile, GroupMetadata } from "@adiwajshing/baileys";
-import { AuthenticationState, SocketConfig } from "@adiwajshing/baileys";
+import makeWASocket, { useMultiFileAuthState, proto, MiscMessageGenerationOptions, Browsers, downloadMediaMessage, DisconnectReason, BaileysEventMap, AnyMessageContent, WABusinessProfile, GroupMetadata, makeInMemoryStore, makeCacheableSignalKeyStore } from "@adiwajshing/baileys";
+import { SocketConfig } from "@adiwajshing/baileys";
 import { readFileSync, statSync } from "fs";
 import EventEmitter from "events";
 import { Boom } from "@hapi/boom";
 import P from "pino";
 
-const tempStore: Record<string, proto.WebMessageInfo> = {};
-
 export class Client extends EventEmitter {
     socket: ReturnType<typeof makeWASocket>;
-    private state: AuthenticationState;
+    private store: ReturnType<typeof makeInMemoryStore>;
     private saveCreds: () => Promise<void>;
     opened: boolean;
     terminal: boolean = true;
@@ -23,27 +21,30 @@ export class Client extends EventEmitter {
     start() {
         return new Promise(async (resolve) => {
             const { state, saveCreds } = await useMultiFileAuthState("auth_info/" + (this.opts?.id || "default"));
-
-            this.state = state;
-            this.saveCreds = saveCreds;
-
             const logger = P({ level: "silent" });
-            logger.error = (_obj: any, msg: any) => {
-                this.emit("error", msg);
-            }
+
+            this.saveCreds = saveCreds;
+            this.store = makeInMemoryStore({ logger });
 
             const socket = makeWASocket({
                 ...this.opts?.baileysOpts,
                 logger,
-                auth: state,
+                auth: {
+                    creds: state.creds,
+                    keys: makeCacheableSignalKeyStore(state.keys, logger)
+                },
                 browser: Browsers.appropriate("Desktop"),
-                getMessage: async (key) => {
-                    const { id } = key;
-                    return tempStore[id!]?.message!;
+                generateHighQualityLinkPreview: true,
+                getMessage: async ({ remoteJid, id }) => {
+                    if (!this.store) return proto.Message.fromObject({});
+
+                    const msg = await this.store.loadMessage(remoteJid!, id!);
+                    return msg?.message!;
                 }
             });
 
             this.socket = socket;
+            this.store.bind(this.emitter);
             this.recoverListeners();
             this.setListeners();
 
@@ -67,7 +68,6 @@ export class Client extends EventEmitter {
                 ...opts
             }))!;
 
-            tempStore[msg.key.id!] = msg!;
             resolve(new Message(this, msg));
         });
     }
@@ -158,7 +158,7 @@ export class Message {
         const type = Object.keys(data.message!)[0];
         // @ts-ignore
         this.content = message?.conversation || message?.extendedTextMessage?.text || message![type]?.caption || "";
-        this.hasMedia = ["imageMessage", "videoMessage", "stickerMessage", "audioMessage", "documentMessage", "documentWithCaptionMessage"].includes(type);
+        this.hasMedia = ["imageMessage", "videoMessage", "stickerMessage", "audioMessage", "documentMessage", "documentWithCaptionMessage", "viewOnceMessage"].includes(type);
         if (message?.documentWithCaptionMessage) this.content = message.documentWithCaptionMessage.message?.documentMessage?.caption!;
     }
 
@@ -200,10 +200,11 @@ export class Message {
                 reuploadRequest: this.client.socket.updateMediaMessage
             }) as Buffer;
 
-            const type = Object.keys(this._data.message!)[0];
+            const msg = this._data.message?.viewOnceMessage?.message || this._data.message!;
+            let type = Object.keys(msg)[0];
+
             // @ts-ignore
-            let data = this._data.message[type];
-            if (this._data.message?.documentWithCaptionMessage) data = this._data.message.documentWithCaptionMessage.message?.documentMessage;
+            const data = msg.documentWithCaptionMessage?.message?.documentMessage || msg[type];
             resolve(new Media(buffer, { mimetype: data.mimetype, size: data.fileLength, text: data.caption }));
         });
     }

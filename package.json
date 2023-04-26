@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "npm run build && node src/app.js",
     "prepare": "tsc || exit 0",
-    "newplugin": "node src/pluginManager/newPlugin"
+    "newplugin": "ts-node src/pluginManager/newPlugin"
   },
   "keywords": [],
   "author": "RedTNT",
@@ -17,13 +17,9 @@
   },
   "license": "ISC",
   "dependencies": {
-    "@adiwajshing/baileys": "github:adiwajshing/Baileys",
+    "@adiwajshing/baileys": "github:WhiskeySockets/Baileys",
     "@adiwajshing/keyed-db": "^0.2.4",
     "@hapi/boom": "^10.0.1",
-    "@types/ansi": "^0.3.3",
-    "@types/inquirer": "8.2.6",
-    "@types/mime-db": "^1.43.1",
-    "@types/qrcode-terminal": "^0.12.0",
     "ansi": "^0.3.1",
     "bot": "file:src/api",
     "colors": "1.4.0",
@@ -35,6 +31,10 @@
     "wa-sticker-formatter": "^4.4.4"
   },
   "devDependencies": {
+    "@types/ansi": "^0.3.3",
+    "@types/inquirer": "8.2.6",
+    "@types/mime-db": "^1.43.1",
+    "@types/qrcode-terminal": "^0.12.0",
     "@types/node": "^18.14.0"
   }
 }
